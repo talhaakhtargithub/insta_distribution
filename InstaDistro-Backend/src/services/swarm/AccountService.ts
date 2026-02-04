@@ -28,9 +28,13 @@ export interface Account {
 export interface CreateAccountInput {
   user_id: string;
   username: string;
-  password: string;
+  password?: string;
   account_type: 'personal' | 'business';
   proxy_id?: string;
+  // OAuth fields (for business accounts)
+  access_token?: string;
+  instagram_user_id?: string;
+  is_authenticated?: boolean;
 }
 
 export interface UpdateAccountInput {
@@ -42,6 +46,13 @@ export interface UpdateAccountInput {
   proxy_id?: string;
   follower_count?: number;
   is_source?: boolean;
+  // OAuth and session fields
+  access_token?: string;
+  session_token?: string;
+  is_authenticated?: boolean;
+  last_auth_check?: string;
+  profile_pic_url?: string;
+  instagram_user_id?: string;
 }
 
 export interface BulkImportInput {
@@ -59,15 +70,16 @@ class AccountService {
    */
   async createAccount(input: CreateAccountInput): Promise<Account> {
     try {
-      // Encrypt password before storing
-      const encryptedPassword = encryptionService.encrypt(input.password);
+      // Encrypt password before storing (if provided)
+      const encryptedPassword = input.password ? encryptionService.encrypt(input.password) : null;
 
       const query = `
         INSERT INTO accounts (
           user_id, username, encrypted_password, account_type,
-          proxy_id, account_state, is_authenticated, is_source
+          proxy_id, account_state, is_authenticated, is_source,
+          access_token, instagram_user_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *
       `;
 
@@ -78,8 +90,10 @@ class AccountService {
         input.account_type,
         input.proxy_id || null,
         'NEW_ACCOUNT', // Default state
-        false, // Not authenticated yet
+        input.is_authenticated || false, // Authenticated for OAuth accounts
         false, // Not a source account
+        input.access_token || null,
+        input.instagram_user_id || null,
       ];
 
       const result = await pool.query(query, values);

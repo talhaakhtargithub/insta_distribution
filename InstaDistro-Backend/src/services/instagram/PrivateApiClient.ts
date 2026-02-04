@@ -145,17 +145,22 @@ export class PrivateApiClient {
       logger.info(`Uploading video for ${this.username}`);
 
       const videoBuffer = await readFile(videoPath);
-      let coverBuffer;
+      let coverBuffer: Buffer | undefined;
 
       if (coverImagePath) {
         coverBuffer = await readFile(coverImagePath);
       }
 
-      const publishResult = await this.ig.publish.video({
+      const publishOptions: any = {
         video: videoBuffer,
-        coverImage: coverBuffer,
         caption,
-      });
+      };
+
+      if (coverBuffer) {
+        publishOptions.coverImage = coverBuffer;
+      }
+
+      const publishResult = await this.ig.publish.video(publishOptions);
 
       logger.info(`Video uploaded successfully for ${this.username}, media ID: ${publishResult.media.id}`);
 
@@ -196,8 +201,10 @@ export class PrivateApiClient {
       await this.ig.media.like({
         mediaId,
         moduleInfo: {
-          module_name: 'profile',
-        },
+          module_name: 'feed_timeline',
+          user_id: await this.ig.user.getIdByUsername(this.username),
+          username: this.username,
+        } as any,
         d: 0,
       });
 
