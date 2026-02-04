@@ -1,11 +1,16 @@
 import { Router } from 'express';
 import { accountController } from '../controllers/AccountController';
+import { authMiddleware } from '../middlewares/auth.middleware';
 
 const router = Router();
 
 /**
  * Account Management Routes
+ * All routes require authentication
  */
+
+// Apply authentication middleware to all routes
+router.use(authMiddleware);
 
 // Create new account
 router.post('/', (req, res) => accountController.createAccount(req, res));

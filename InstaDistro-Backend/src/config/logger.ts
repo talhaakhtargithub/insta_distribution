@@ -104,4 +104,64 @@ export const logError = (error: Error, context?: any) => {
   });
 };
 
+/**
+ * Sanitize sensitive data from objects before logging
+ * Redacts passwords, tokens, secrets, keys, and other sensitive fields
+ */
+export const sanitizeSensitiveData = (obj: any): any => {
+  if (!obj || typeof obj !== 'object') {
+    return obj;
+  }
+
+  // Sensitive field names to redact (case-insensitive)
+  const sensitiveFields = [
+    'password',
+    'passwd',
+    'pwd',
+    'token',
+    'accesstoken',
+    'refreshtoken',
+    'access_token',
+    'refresh_token',
+    'secret',
+    'apikey',
+    'api_key',
+    'key',
+    'authorization',
+    'auth',
+    'credential',
+    'credentials',
+    'cookie',
+    'session',
+    'csrf',
+    'xsrf',
+    'private',
+    'privatekey',
+    'private_key',
+    'encryptionkey',
+    'encryption_key',
+  ];
+
+  const sanitized = Array.isArray(obj) ? [...obj] : { ...obj };
+
+  for (const key in sanitized) {
+    const lowerKey = key.toLowerCase();
+
+    // Check if field name matches sensitive patterns
+    const isSensitive = sensitiveFields.some(field =>
+      lowerKey.includes(field)
+    );
+
+    if (isSensitive) {
+      // Redact the value
+      sanitized[key] = '[REDACTED]';
+    } else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
+      // Recursively sanitize nested objects
+      sanitized[key] = sanitizeSensitiveData(sanitized[key]);
+    }
+  }
+
+  return sanitized;
+};
+
 export default logger;

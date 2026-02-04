@@ -4,6 +4,7 @@ import { googleOAuthService } from '../../services/auth/GoogleOAuthService';
 import { userService } from '../../services/auth/UserService';
 import { jwtService } from '../../services/auth/JwtService';
 import { accountService } from '../../services/swarm/AccountService';
+import { oauthStateService } from '../../services/auth/OAuthStateService';
 import { logger } from '../../config/logger';
 
 /**
@@ -24,11 +25,15 @@ export class OAuthController {
         });
       }
 
-      // Generate random state for CSRF protection
-      const state = Math.random().toString(36).substring(7);
+      // Generate cryptographically secure state for CSRF protection
+      const state = oauthStateService.generateState();
 
-      // Store state in session or temporary storage
-      // For now, we'll pass it as query param and validate later
+      // Store state in Redis with metadata
+      await oauthStateService.storeState(state, {
+        provider: 'instagram',
+        timestamp: Date.now()
+      });
+
       const authUrl = instagramOAuthService.getAuthorizationUrl(state);
 
       logger.info('Redirecting user to Instagram OAuth authorization');
@@ -74,8 +79,23 @@ export class OAuthController {
         });
       }
 
-      // TODO: Validate state parameter for CSRF protection
-      // if (state !== storedState) { ... }
+      // Validate state parameter for CSRF protection
+      if (!state || typeof state !== 'string') {
+        logger.warn('Instagram OAuth callback: missing state parameter');
+        return res.status(400).json({
+          error: 'Security Error',
+          message: 'State parameter is required for security',
+        });
+      }
+
+      const stateMetadata = await oauthStateService.validateState(state as string);
+      if (!stateMetadata || stateMetadata.provider !== 'instagram') {
+        logger.warn('Instagram OAuth callback: invalid or expired state', { state });
+        return res.status(400).json({
+          error: 'Security Error',
+          message: 'Invalid or expired state parameter. Please restart the authorization flow.',
+        });
+      }
 
       logger.info('Received Instagram OAuth callback, exchanging code for token');
 
@@ -239,8 +259,14 @@ export class OAuthController {
         });
       }
 
-      // Generate random state for CSRF protection
-      const state = Math.random().toString(36).substring(7);
+      // Generate cryptographically secure state for CSRF protection
+      const state = oauthStateService.generateState();
+
+      // Store state in Redis with metadata
+      await oauthStateService.storeState(state, {
+        provider: 'google',
+        timestamp: Date.now()
+      });
 
       const authUrl = googleOAuthService.getAuthorizationUrl(state);
 
@@ -283,6 +309,24 @@ export class OAuthController {
         return res.status(400).json({
           error: 'Validation Error',
           message: 'Authorization code is required',
+        });
+      }
+
+      // Validate state parameter for CSRF protection
+      if (!state || typeof state !== 'string') {
+        logger.warn('Google OAuth callback: missing state parameter');
+        return res.status(400).json({
+          error: 'Security Error',
+          message: 'State parameter is required for security',
+        });
+      }
+
+      const stateMetadata = await oauthStateService.validateState(state as string);
+      if (!stateMetadata || stateMetadata.provider !== 'google') {
+        logger.warn('Google OAuth callback: invalid or expired state', { state });
+        return res.status(400).json({
+          error: 'Security Error',
+          message: 'Invalid or expired state parameter. Please restart the authorization flow.',
         });
       }
 

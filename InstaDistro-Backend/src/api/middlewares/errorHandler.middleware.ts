@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '../../config/logger';
+import { logger, sanitizeSensitiveData } from '../../config/logger';
 
 // ============================================
 // ERROR CLASSES
@@ -65,7 +65,7 @@ export function errorHandler(
     isOperational = err.isOperational;
   }
 
-  // Log error
+  // Log error (with sanitized request data)
   logger.error('Request error', {
     error: {
       message: err.message,
@@ -76,8 +76,8 @@ export function errorHandler(
     request: {
       method: req.method,
       path: req.path,
-      query: req.query,
-      body: req.body,
+      query: sanitizeSensitiveData(req.query),
+      body: sanitizeSensitiveData(req.body),
       ip: req.ip,
       userAgent: req.get('user-agent')
     }

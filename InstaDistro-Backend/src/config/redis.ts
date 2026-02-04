@@ -1,4 +1,6 @@
+import Redis from 'ioredis';
 import { envConfig } from './env';
+import { logger } from './logger';
 
 /**
  * Redis Configuration for Bull Queue
@@ -29,3 +31,34 @@ export const redisConfig: RedisConfig = {
 
 // Redis connection URL (alternative format)
 export const redisUrl = envConfig.REDIS_URL || `redis://${redisConfig.host}:${redisConfig.port}`;
+
+/**
+ * Shared Redis Client Instance
+ * Use this for general Redis operations (caching, state management, etc.)
+ */
+export const redisClient = new Redis({
+  host: envConfig.REDIS_HOST || 'localhost',
+  port: envConfig.REDIS_PORT || 6379,
+  password: envConfig.REDIS_PASSWORD,
+  db: envConfig.REDIS_DB || 0,
+  maxRetriesPerRequest: 3,
+  retryStrategy: (times: number) => Math.min(times * 50, 2000),
+  lazyConnect: false,
+});
+
+// Redis connection event handlers
+redisClient.on('connect', () => {
+  logger.info('Redis client connected');
+});
+
+redisClient.on('error', (error) => {
+  logger.error('Redis client error', { error });
+});
+
+redisClient.on('close', () => {
+  logger.warn('Redis client connection closed');
+});
+
+redisClient.on('reconnecting', () => {
+  logger.info('Redis client reconnecting...');
+});
