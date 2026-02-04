@@ -1,6 +1,6 @@
 # Instagram Swarm Distribution - TODO & Next Phases
 
-**Current Status:** ✅ **Phase 2.1 Complete** - Instagram API Integration with Dual Authentication
+**Current Status:** ✅ **Phase 2.2 Complete** - Account Authentication & Session Management
 
 This document outlines what's been completed and what remains to build a complete Instagram swarm management system for 100+ accounts.
 
@@ -554,42 +554,86 @@ Jump to [Phase 2.2](#22-account-authentication) below for tasks.
 
 ---
 
-### 2.2 Account Authentication
+### ✅ 2.2 Account Authentication (COMPLETED)
 
 **Priority:** HIGH
-**Estimated Time:** 2-3 days
+**Time Taken:** 1 day
 
-**Tasks:**
-- [ ] **Implement Instagram login flow**
-  - Test credentials when account is created
-  - Store session tokens (encrypted)
-  - Handle 2FA challenges
-  - Handle checkpoint challenges (suspicious login)
-  - Auto-refresh sessions before expiry
+**Completed Tasks:**
+- [x] **Implement Instagram login flow**
+  - ✅ Test credentials when account is created
+  - ✅ Store session tokens (encrypted)
+  - ✅ Handle 2FA challenges (detection + error messaging)
+  - ✅ Handle checkpoint challenges (user guidance)
+  - ✅ Auto-refresh sessions before expiry
 
-- [ ] **Create Authentication Service**
-  - File: `src/services/instagram/AuthService.ts`
-  - Methods:
-    - `authenticate(account)` - Login to Instagram
-    - `verifySession(account)` - Check if session is valid
-    - `refreshSession(account)` - Refresh expired session
-    - `handleChallenge(account, challengeType)` - Handle 2FA/checkpoints
+- [x] **Create Authentication Service**
+  - File: `src/services/instagram/AuthService.ts` ✅
+  - Methods implemented:
+    - `authenticate(accountId)` - Auto-detects type, logs in to Instagram
+    - `authenticatePersonalAccount()` - Private API login
+    - `authenticateBusinessAccount()` - Graph API token validation
+    - `verifyPersonalSession()` - Check if session is valid
+    - `refreshSession(accountId)` - Refresh expired session
+    - `handle2FAChallenge()` - Handle 2FA (detection only)
+    - `handleCheckpointChallenge()` - Handle Instagram challenges
+    - `checkAccountsHealth(userId)` - Batch health check
 
-- [ ] **Add Account Verification Endpoint**
-  - Implement `POST /api/accounts/:id/verify`
-  - Test Instagram login
-  - Update `is_authenticated` status
-  - Store session token
+- [x] **Add Account Verification Endpoints**
+  - File: `src/api/controllers/AccountController.ts` ✅
+  - Endpoints:
+    - `POST /api/accounts/:id/verify` - Verify credentials
+    - `POST /api/accounts/:id/refresh-session` - Refresh session
+    - `POST /api/accounts/:id/2fa-challenge` - Submit 2FA code
+    - `POST /api/accounts/health-check` - Run health check
+  - Updates `is_authenticated` status
+  - Stores session token encrypted
+  - Updates account info (followers, profile pic, etc.)
 
-- [ ] **Update Frontend**
+- [x] **Background Health Check Job**
+  - File: `src/jobs/HealthCheckJob.ts` ✅
+  - Bull queue for background processing
+  - Runs every 6 hours automatically
+  - Functions:
+    - `scheduleHealthCheck(userId)` - Schedule periodic checks
+    - `checkAccountNow(userId, accountId)` - Immediate check
+    - `checkAllAccountsNow(userId)` - Check all accounts
+    - `cancelHealthCheck(userId)` - Cancel schedule
+    - `getHealthCheckStats()` - Queue statistics
+  - Event monitoring and logging
+
+- [ ] **Update Frontend** (TODO - Phase 2.4)
   - Add "Verify" button in AccountsScreen
   - Show authentication status (✓ Verified / ✗ Not Verified)
   - Handle 2FA input dialog
 
+**Features:**
+✅ Automatic session management
+✅ Session validity checking
+✅ Auto-refresh before expiry
+✅ Challenge detection (2FA, checkpoint)
+✅ Account status updates
+✅ Background health monitoring
+✅ Batch health checks
+✅ Queue-based processing
+
 **Testing:**
 ```bash
-# Test account authentication
+# Test account verification
 curl -X POST http://localhost:3000/api/accounts/ACCOUNT_ID/verify \
+  -H "Content-Type: application/json" \
+  -H "x-user-id: user_1"
+
+# Expected: {"success":true,"authenticated":true,"accountInfo":{...}}
+
+# Refresh session
+curl -X POST http://localhost:3000/api/accounts/ACCOUNT_ID/refresh-session \
+  -H "Content-Type: application/json" \
+  -H "x-user-id: user_1"
+
+# Run health check for all accounts
+curl -X POST http://localhost:3000/api/accounts/health-check \
+  -H "Content-Type: application/json" \
   -H "x-user-id: user_1"
 ```
 
