@@ -1,6 +1,6 @@
 # Instagram Swarm Distribution - TODO & Next Phases
 
-**Current Status:** ✅ **Phase 2.2 Complete** - Account Authentication & Session Management
+**Current Status:** ✅ **Phase 3.1 Complete** - Warmup Protocol Implementation with Bull Queue
 
 This document outlines what's been completed and what remains to build a complete Instagram swarm management system for 100+ accounts.
 
@@ -79,12 +79,22 @@ InstaDistro-Backend/
 │   │   ├── instagram/
 │   │   │   ├── PrivateApiClient.ts          # Instagram Private API ✨
 │   │   │   ├── GraphApiClient.ts            # Instagram Graph API ✨
-│   │   │   └── PostingService.ts            # Unified posting ✨
+│   │   │   ├── PostingService.ts            # Unified posting ✨
+│   │   │   └── AuthService.ts               # Instagram authentication ✨
 │   │   ├── auth/
 │   │   │   ├── EncryptionService.ts         # AES-256 encryption
-│   │   │   └── InstagramOAuthService.ts     # OAuth flow ✨
+│   │   │   ├── InstagramOAuthService.ts     # Instagram OAuth ✨
+│   │   │   ├── GoogleOAuthService.ts        # Google OAuth 🆕
+│   │   │   ├── JwtService.ts                # JWT tokens 🆕
+│   │   │   └── UserService.ts               # User management 🆕
 │   │   └── swarm/
-│   │       └── AccountService.ts             # Account business logic
+│   │       ├── AccountService.ts            # Account business logic
+│   │       └── WarmupAutomation.ts          # Warmup protocol 🆕
+│   ├── jobs/
+│   │   ├── HealthCheckJob.ts                # Background health checks ✨
+│   │   └── WarmupJob.ts                     # Warmup task processor 🆕
+│   ├── models/
+│   │   └── WarmupTask.ts                    # Warmup data models 🆕
 │   └── db/
 │       ├── migrate.ts                        # Migration runner
 │       └── migrations/                       # SQL migrations (9 files)
@@ -206,15 +216,35 @@ PUT  /api/accounts/:id                # Update account
 DELETE /api/accounts/:id              # Delete account
 POST /api/accounts/bulk-import        # Import CSV
 GET  /api/accounts/stats/swarm        # Swarm statistics
+POST /api/accounts/:id/verify         # Verify Instagram credentials ✨
+POST /api/accounts/:id/refresh-session # Refresh session ✨
+POST /api/accounts/:id/2fa-challenge  # Handle 2FA ✨
+POST /api/accounts/health-check       # Run health check ✨
 
 POST /api/posts/immediate             # Post immediately ✨
 POST /api/posts/verify-account        # Verify credentials ✨
 GET  /api/posts/history               # Posting history ✨
 
 GET  /api/auth/providers              # List OAuth providers ✨
-GET  /api/auth/instagram/authorize    # Start OAuth ✨
-GET  /api/auth/instagram/callback     # OAuth callback ✨
-POST /api/auth/instagram/refresh-token # Refresh token ✨
+GET  /api/auth/instagram/authorize    # Start Instagram OAuth ✨
+GET  /api/auth/instagram/callback     # Instagram OAuth callback ✨
+POST /api/auth/instagram/refresh-token # Refresh Instagram token ✨
+GET  /api/auth/google/authorize       # Start Google OAuth ✨
+GET  /api/auth/google/callback        # Google OAuth callback ✨
+POST /api/auth/google/verify          # Verify Google ID token ✨
+POST /api/auth/refresh                # Refresh JWT token ✨
+GET  /api/auth/me                     # Get current user ✨
+
+GET  /api/warmup/protocol             # Get 14-day protocol 🆕
+POST /api/warmup/start/:accountId     # Start warmup 🆕
+GET  /api/warmup/progress/:accountId  # Get progress 🆕
+GET  /api/warmup/tasks/:accountId/:day # Get day tasks 🆕
+POST /api/warmup/pause/:accountId     # Pause warmup 🆕
+POST /api/warmup/resume/:accountId    # Resume warmup 🆕
+POST /api/warmup/skip-to-active/:accountId # Skip (risky!) 🆕
+GET  /api/warmup/accounts             # List warmup accounts 🆕
+GET  /api/warmup/stats                # Get statistics 🆕
+POST /api/warmup/process-now          # Manual trigger 🆕
 ```
 
 ### Database Schema (Quick Reference)
@@ -315,12 +345,22 @@ docker-compose logs -f
 ✅ **Phase 2.1:** Instagram API integration with TWO authentication methods:
 - **Method 1:** Username/Password (Personal & Business accounts)
 - **Method 2:** Instagram OAuth (Business accounts only)
+✅ **Phase 2.2:** Account authentication & session management with health monitoring
+✅ **Phase 2.3:** Google OAuth for app users with JWT-based authentication
+✅ **Phase 3.1:** 14-day warmup protocol with Bull queue automation
 
 **What Works Right Now:**
 - ✅ Account management (create, list, update, delete)
 - ✅ Both personal & business account support
 - ✅ OAuth flow for business accounts
 - ✅ Instagram posting endpoints (ready to test)
+- ✅ Session management & automatic refresh
+- ✅ Background health monitoring (every 6 hours)
+- ✅ Google OAuth for app user login
+- ✅ JWT authentication with access + refresh tokens
+- ✅ 14-day warmup protocol with automated task execution
+- ✅ Bull queue for background job processing
+- ✅ Warmup progress tracking and statistics
 - ✅ TypeScript compilation clean
 - ✅ Backend build successful
 
@@ -639,7 +679,256 @@ curl -X POST http://localhost:3000/api/accounts/health-check \
 
 ---
 
-### 2.3 Basic Posting Functionality
+### ✅ 2.3 Google OAuth for App Users (COMPLETED)
+
+**Priority:** MEDIUM
+**Time Taken:** 1 day
+
+**Completed Tasks:**
+- [x] **Install Google OAuth packages**
+  - Installed `google-auth-library@^9.x.x`
+  - Installed `jsonwebtoken@^9.x.x`
+  - Installed `@types/jsonwebtoken@^9.x.x`
+
+- [x] **Create JWT Service**
+  - File: `src/services/auth/JwtService.ts` ✅
+  - Methods implemented:
+    - `generateAccessToken(payload)` - 1 hour expiry
+    - `generateRefreshToken(payload)` - 7 day expiry
+    - `generateTokenPair(payload)` - Both tokens
+    - `verifyAccessToken(token)` - Verify and decode
+    - `verifyRefreshToken(token)` - Verify refresh
+    - `isTokenExpired(token)` - Check expiry
+    - `parseExpiry(expiry)` - Convert to seconds
+  - JWT payload includes: userId, email, name, picture, provider
+
+- [x] **Create Google OAuth Service**
+  - File: `src/services/auth/GoogleOAuthService.ts` ✅
+  - Methods implemented:
+    - `getAuthorizationUrl(state)` - Generate OAuth URL
+    - `authenticateWithCode(code)` - Exchange code for tokens
+    - `verifyIdToken(idToken)` - For mobile apps (Google Sign-In SDK)
+    - `isConfigured()` - Check if credentials set
+    - `getStatus()` - Configuration status
+  - Supports both web OAuth and mobile ID token verification
+
+- [x] **Create User Service**
+  - File: `src/services/auth/UserService.ts` ✅
+  - Methods implemented:
+    - `findByEmail(email)` - Find user by email
+    - `findByGoogleId(googleId)` - Find by Google ID
+    - `findById(id)` - Find by user ID
+    - `create(input)` - Create new user
+    - `update(id, updates)` - Update user profile
+    - `updateLastLogin(id)` - Update login time
+    - `findOrCreateFromGoogle(googleUserInfo)` - OAuth user creation
+    - `delete(id)` - Delete user
+  - Auto-links Google accounts to existing email accounts
+
+- [x] **Add Users Table**
+  - Added to `src/db/migrations.sql` ✅
+  - Fields: id, email, google_id, auth_provider, name, given_name, family_name, picture, locale, email_verified, is_active, created_at, updated_at, last_login
+  - Indexes: email, google_id, auth_provider
+  - Updated accounts table with foreign key to users table
+
+- [x] **Update Auth Middleware**
+  - File: `src/api/middlewares/auth.middleware.ts` ✅
+  - Changed from placeholder to full JWT verification
+  - Extracts Bearer token from Authorization header
+  - Verifies JWT and attaches user to request
+  - Backward compatible with x-user-id header (dev mode)
+  - Handles token expiry with clear error messages
+
+- [x] **Add Google OAuth Endpoints**
+  - Updated `src/api/controllers/OAuthController.ts` ✅
+  - Endpoints:
+    - `GET /api/auth/google/authorize` - Get OAuth URL
+    - `GET /api/auth/google/callback` - Handle OAuth callback
+    - `POST /api/auth/google/verify` - Verify ID token (mobile)
+    - `POST /api/auth/refresh` - Refresh access token
+    - `GET /api/auth/me` - Get current user profile
+  - Returns user + JWT tokens on successful auth
+
+- [x] **Update Environment Configuration**
+  - Updated `.env.example` with Google OAuth vars
+  - Added GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI
+  - Documentation on how to get credentials from Google Cloud Console
+
+**Features:**
+✅ Google OAuth 2.0 for app user authentication
+✅ JWT-based session management (access + refresh tokens)
+✅ Mobile app support (ID token verification)
+✅ Account linking (Google → existing email account)
+✅ Automatic user creation from Google profile
+✅ Protected routes with JWT middleware
+✅ Token refresh endpoint
+
+**Architecture:**
+- **Instagram accounts** authenticated via Instagram (username/password OR Instagram OAuth)
+- **App users** authenticated via Google OAuth + JWT tokens
+- Clear separation: users table (app users) vs accounts table (Instagram accounts)
+- users.id → accounts.user_id (one user can have many Instagram accounts)
+
+**Testing:**
+```bash
+# Get Google OAuth URL
+curl http://localhost:3000/api/auth/google/authorize
+
+# After OAuth callback, test protected endpoint
+curl http://localhost:3000/api/auth/me \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+
+# Refresh token
+curl -X POST http://localhost:3000/api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken": "YOUR_REFRESH_TOKEN"}'
+```
+
+---
+
+## ✅ Phase 3: Warmup Automation (Week 5-6)
+
+**Goal:** Implement 14-day warmup protocol for new Instagram accounts
+
+### ✅ 3.1 Warmup Protocol Implementation (COMPLETED)
+
+**Priority:** HIGH
+**Time Taken:** 1 day
+
+**Completed Tasks:**
+- [x] **Create WarmupTask Model**
+  - File: `src/models/WarmupTask.ts` ✅
+  - Task types: follow, like, comment, watch_story, story, post
+  - Task statuses: pending, in_progress, completed, failed
+  - Full 14-day protocol configuration:
+    - Days 1-2: Account setup (follow 5-10, like 10-15)
+    - Days 3-4: Light activity (comments added, first story)
+    - Days 5-7: Increased engagement, **FIRST FEED POST on Day 7**
+    - Days 8-10: Posting phase (1 post/day)
+    - Days 11-14: Scale up (2-3 posts/day)
+  - Helper functions: getWarmupProtocolForDay, calculateWarmupProgress, isWarmupComplete
+
+- [x] **Create WarmupAutomation Service**
+  - File: `src/services/swarm/WarmupAutomation.ts` ✅
+  - Methods implemented:
+    - `startWarmup(accountId)` - Generate all 14 days of tasks
+    - `getProgress(accountId)` - Get completion percentage, current day
+    - `getDueTasks(limit)` - Fetch tasks ready for execution
+    - `getTasksForDay(accountId, day)` - Get specific day tasks
+    - `updateTask(taskId, updates)` - Update task status
+    - `completeTask(taskId, completedCount)` - Mark complete
+    - `failTask(taskId, errorMessage)` - Mark failed
+    - `pauseWarmup(accountId)` - Pause warmup
+    - `resumeWarmup(accountId)` - Resume warmup
+    - `skipToActive(accountId)` - Force skip (with warning)
+    - `getAccountsInWarmup(userId)` - List warmup accounts
+    - `getWarmupStats(userId)` - Aggregate statistics
+  - Randomized task scheduling (spread throughout day)
+  - Automatic transition to ACTIVE state after Day 14
+
+- [x] **Create WarmupJob Processor**
+  - File: `src/jobs/WarmupJob.ts` ✅
+  - Bull queue-based task processing
+  - Automatic scheduler (checks every 5 minutes)
+  - Instagram action executors:
+    - `executeFollowAction()` - Follow from explore feed
+    - `executeLikeAction()` - Like posts from timeline
+    - `executeCommentAction()` - Generic comments (10 variations)
+    - `executeWatchStoryAction()` - Watch stories
+    - `executePostStoryAction()` - Post stories (TODO: content)
+    - `executePostFeedAction()` - Post to feed (TODO: content)
+  - Randomized delays (30s-180s) to mimic human behavior
+  - Session validation before each action
+  - Retry logic with exponential backoff
+  - Queue event monitoring (completed, failed, error)
+
+- [x] **Create WarmupController**
+  - File: `src/api/controllers/WarmupController.ts` ✅
+  - Endpoints:
+    - `POST /api/warmup/start/:accountId` - Start warmup protocol
+    - `GET /api/warmup/progress/:accountId` - Get progress (day, %, tasks)
+    - `GET /api/warmup/tasks/:accountId/:day` - Get day tasks
+    - `POST /api/warmup/pause/:accountId` - Pause warmup
+    - `POST /api/warmup/resume/:accountId` - Resume warmup
+    - `POST /api/warmup/skip-to-active/:accountId` - Skip (requires confirmation)
+    - `GET /api/warmup/accounts` - List accounts in warmup
+    - `GET /api/warmup/stats` - Get statistics + queue stats
+    - `GET /api/warmup/protocol` - Get protocol details
+    - `POST /api/warmup/process-now` - Manual trigger (admin)
+
+- [x] **Create Redis Configuration**
+  - File: `src/config/redis.ts` ✅
+  - Bull queue configuration
+  - Retry strategy and connection pooling
+  - Environment variable support (REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_URL)
+  - Updated `src/config/env.ts` with Redis fields
+
+- [x] **Integrate Warmup Routes**
+  - File: `src/api/routes/warmup.routes.ts` ✅
+  - All routes protected with auth middleware
+  - Registered routes in `src/index.ts`
+  - Started warmup scheduler on server boot
+  - Updated API documentation with warmup endpoints
+
+**Features:**
+✅ 14-day progressive warmup protocol
+✅ Automated task generation with randomization
+✅ Bull queue-based background processing
+✅ Scheduler checks for due tasks every 5 minutes
+✅ Instagram actions: follow, like, comment, watch stories
+✅ Randomized delays (30s-180s) to avoid detection
+✅ Session management and validation
+✅ Automatic transition to ACTIVE after Day 14
+✅ Pause/resume functionality
+✅ Skip to active (risky, with warning)
+✅ Progress tracking and statistics
+✅ Queue monitoring and admin controls
+
+**Database:**
+- warmup_tasks table already existed in migrations.sql
+- Columns: id, account_id, day, task_type, target_count, completed_count, status, scheduled_time, completed_at, error_message
+
+**Risk Mitigation:**
+✅ Randomized delays between actions
+✅ Progressive scaling (1-3 posts → 10-15 posts over 14 days)
+✅ Automatic pause on authentication failures
+✅ Session validation before each action
+✅ Retry logic with exponential backoff
+✅ Queue-based processing (handles server restarts)
+
+**Testing:**
+```bash
+# Start warmup for account
+curl -X POST http://localhost:3000/api/warmup/start/ACCOUNT_ID \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Get progress
+curl http://localhost:3000/api/warmup/progress/ACCOUNT_ID \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Get protocol details
+curl http://localhost:3000/api/warmup/protocol \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Pause warmup
+curl -X POST http://localhost:3000/api/warmup/pause/ACCOUNT_ID \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Skip to active (risky!)
+curl -X POST http://localhost:3000/api/warmup/skip-to-active/ACCOUNT_ID \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"confirmed": true}'
+```
+
+**Next Steps:**
+- Phase 3.2: Warmup Execution Testing
+- Phase 3.3: Warmup UI Components (frontend)
+- Phase 4: Content Variation Engine
+
+---
+
+### 2.4 Basic Posting Functionality
 
 **Priority:** HIGH
 **Estimated Time:** 2-3 days
