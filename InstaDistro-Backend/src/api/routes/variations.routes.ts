@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { variationController } from '../controllers/VariationController';
+import { authMiddleware } from '../middlewares/auth.middleware';
+const router = Router();
+router.use(authMiddleware);
+router.post('/create', variationController.createVariation.bind(variationController));
+router.post('/batch', variationController.createBatch.bind(variationController));
+router.get('/settings', variationController.getSettings.bind(variationController));
+router.get('/:accountId', variationController.getVariations.bind(variationController));
+export default router;

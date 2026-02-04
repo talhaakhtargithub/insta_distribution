@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx:*)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(docker:*)",
+      "Bash(tsc:*)"
+    ]
+  },
+  "hooks": {
+    "postToolUse": [
+      {
+        "type": "shell",
+        "command": "cd '/c/Users/Saad/Desktop/Instagram Distribution/InstaDistro-Backend' && npx tsc --noEmit 2>&1 | tail -20",
+        "description": "Auto TypeScript validation after file edits"
+      }
+    ]
+  },
+  "agentSkills": {
+    "autoTypeCheck": {
+      "description": "Runs tsc --noEmit after every TypeScript file write to catch errors immediately",
+      "trigger": "postWrite",
+      "command": "npx tsc --noEmit"
+    },
+    "buildValidate": {
+      "description": "Full backend build validation",
+      "trigger": "manual",
+      "command": "npm run build"
+    },
+    "devState": {
+      "description": "Read current development state and next tasks",
+      "trigger": "manual",
+      "reads": ["DEVELOPMENT_STATE.md", ".agent/workflows/autonomous-development.md"]
+    },
+    "healthCheck": {
+      "description": "Verify API server is running and responsive",
+      "trigger": "manual",
+      "command": "curl -s http://localhost:3000/health"
+    }
+  }
+}

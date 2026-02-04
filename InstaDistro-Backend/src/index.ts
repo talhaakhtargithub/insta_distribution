@@ -10,6 +10,9 @@ import accountsRouter from './api/routes/accounts.routes';
 import postsRouter from './api/routes/posts.routes';
 import oauthRouter from './api/routes/oauth.routes';
 import warmupRouter from './api/routes/warmup.routes';
+import variationsRouter from './api/routes/variations.routes';
+import distributionRouter from './api/routes/distribution.routes';
+import groupsRouter from './api/routes/groups.routes';
 import { startWarmupScheduler } from './jobs/WarmupJob';
 
 const app = express();
@@ -119,6 +122,15 @@ app.use('/api/auth', oauthRouter);
 
 // Warmup routes
 app.use('/api/warmup', warmupRouter);
+
+// Variation routes
+app.use('/api/variations', variationsRouter);
+
+// Distribution routes
+app.use('/api/distribution', distributionRouter);
+
+// Groups routes
+app.use('/api/groups', groupsRouter);
 
 // Future routes (commented for now)
 // app.use('/api/schedules', schedulesRouter);
