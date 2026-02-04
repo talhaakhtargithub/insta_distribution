@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { accountService } from '../../services/swarm/AccountService';
+import { authService } from '../../services/instagram/AuthService';
 
 export class AccountController {
   /**
@@ -204,41 +205,6 @@ export class AccountController {
   }
 
   /**
-   * POST /api/accounts/:id/verify
-   * Verify Instagram credentials for an account
-   */
-  async verifyAccount(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-
-      const account = await accountService.getAccountById(id);
-
-      if (!account) {
-        return res.status(404).json({
-          error: 'Not Found',
-          message: 'Account not found',
-        });
-      }
-
-      // TODO: Integrate with Instagram API to verify credentials
-      // For now, return placeholder response
-
-      res.json({
-        message: 'Account verification not yet implemented',
-        account_id: id,
-        verified: false,
-        note: 'Instagram API integration pending',
-      });
-    } catch (error: any) {
-      console.error('Verify account error:', error);
-      res.status(500).json({
-        error: 'Server Error',
-        message: error.message || 'Failed to verify account',
-      });
-    }
-  }
-
-  /**
    * GET /api/accounts/stats/swarm
    * Get swarm dashboard statistics
    */
@@ -258,6 +224,144 @@ export class AccountController {
       res.status(500).json({
         error: 'Server Error',
         message: error.message || 'Failed to fetch statistics',
+      });
+    }
+  }
+
+  /**
+   * POST /api/accounts/:id/verify
+   * Verify Instagram account credentials and authenticate
+   */
+  async verifyAccount(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      console.log(`Verifying account ${id}`);
+
+      const result = await authService.authenticate(id);
+
+      if (!result.success) {
+        return res.status(400).json({
+          error: 'Verification Failed',
+          message: result.error || 'Failed to verify account',
+          challengeRequired: result.challengeRequired,
+          challengeType: result.challengeType,
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Account verified successfully',
+        authenticated: result.authenticated,
+        accountInfo: result.accountInfo,
+      });
+    } catch (error: any) {
+      console.error('Verify account error:', error);
+      res.status(500).json({
+        error: 'Server Error',
+        message: error.message || 'Verification failed',
+      });
+    }
+  }
+
+  /**
+   * POST /api/accounts/:id/refresh-session
+   * Refresh account session/token
+   */
+  async refreshSession(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      console.log(`Refreshing session for account ${id}`);
+
+      const result = await authService.refreshSession(id);
+
+      if (!result.success) {
+        return res.status(400).json({
+          error: 'Refresh Failed',
+          message: result.error || 'Failed to refresh session',
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Session refreshed successfully',
+        authenticated: result.authenticated,
+      });
+    } catch (error: any) {
+      console.error('Refresh session error:', error);
+      res.status(500).json({
+        error: 'Server Error',
+        message: error.message || 'Session refresh failed',
+      });
+    }
+  }
+
+  /**
+   * POST /api/accounts/health-check
+   * Check health of all accounts and refresh sessions
+   */
+  async healthCheck(req: Request, res: Response) {
+    try {
+      const userId = req.headers['x-user-id'] as string || 'user_1';
+
+      console.log(`Running health check for user ${userId}`);
+
+      const result = await authService.checkAccountsHealth(userId);
+
+      res.json({
+        success: true,
+        message: 'Health check completed',
+        checked: result.checked,
+        refreshed: result.refreshed,
+        failed: result.failed,
+      });
+    } catch (error: any) {
+      console.error('Health check error:', error);
+      res.status(500).json({
+        error: 'Server Error',
+        message: error.message || 'Health check failed',
+      });
+    }
+  }
+
+  /**
+   * POST /api/accounts/:id/2fa-challenge
+   * Submit 2FA code for account verification
+   */
+  async submit2FACode(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { code } = req.body;
+
+      if (!code) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: '2FA code is required',
+        });
+      }
+
+      console.log(`Submitting 2FA code for account ${id}`);
+
+      const result = await authService.handle2FAChallenge(id, code);
+
+      if (!result.success) {
+        return res.status(400).json({
+          error: '2FA Verification Failed',
+          message: result.error || 'Failed to verify 2FA code',
+        });
+      }
+
+      res.json({
+        success: true,
+        message: '2FA verification successful',
+        authenticated: result.authenticated,
+      });
+    } catch (error: any) {
+      console.error('2FA challenge error:', error);
+      res.status(500).json({
+        error: 'Server Error',
+        message: error.message || '2FA verification failed',
       });
     }
   }

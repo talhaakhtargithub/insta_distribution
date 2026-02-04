@@ -22,4 +22,10 @@ router.put('/:id', (req, res) => AccountController_1.accountController.updateAcc
 router.delete('/:id', (req, res) => AccountController_1.accountController.deleteAccount(req, res));
 // Verify Instagram credentials
 router.post('/:id/verify', (req, res) => AccountController_1.accountController.verifyAccount(req, res));
+// Refresh account session
+router.post('/:id/refresh-session', (req, res) => AccountController_1.accountController.refreshSession(req, res));
+// Submit 2FA code
+router.post('/:id/2fa-challenge', (req, res) => AccountController_1.accountController.submit2FACode(req, res));
+// Run health check for all accounts
+router.post('/health-check', (req, res) => AccountController_1.accountController.healthCheck(req, res));
 exports.default = router;
