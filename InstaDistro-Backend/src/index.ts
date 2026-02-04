@@ -14,8 +14,10 @@ import variationsRouter from './api/routes/variations.routes';
 import distributionRouter from './api/routes/distribution.routes';
 import groupsRouter from './api/routes/groups.routes';
 import healthRouter from './api/routes/health.routes';
+import proxyRouter from './api/routes/proxy.routes';
 import { startWarmupScheduler } from './jobs/WarmupJob';
 import { scheduleAutoMonitoring } from './jobs/HealthMonitorJob';
+import { scheduleProxyHealthChecks } from './jobs/ProxyJob';
 
 const app = express();
 const PORT = envConfig.PORT;
@@ -137,10 +139,12 @@ app.use('/api/groups', groupsRouter);
 // Health monitoring routes
 app.use('/api/health', healthRouter);
 
+// Proxy management routes
+app.use('/api/proxies', proxyRouter);
+
 // Future routes (commented for now)
 // app.use('/api/schedules', schedulesRouter);
 // app.use('/api/swarm', swarmRouter);
-// app.use('/api/proxies', proxiesRouter);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
@@ -193,6 +197,10 @@ const server = app.listen(PORT, () => {
   // Start health monitoring scheduler
   scheduleAutoMonitoring();
   logger.info('✓ Health monitoring scheduler started (checks every 6 hours)');
+
+  // Start proxy health checks and rotation
+  scheduleProxyHealthChecks();
+  logger.info('✓ Proxy health checks scheduled (checks every 15 minutes)');
 });
 
 // Graceful shutdown
