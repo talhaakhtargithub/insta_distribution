@@ -7,6 +7,8 @@ import { logger, requestLogger } from './config/logger';
 import { apiLimiter, createAccountLimiter, bulkImportLimiter } from './api/middlewares/rateLimit.middleware';
 import { securityHeaders, corsOptions, sanitizeInput } from './api/middlewares/security.middleware';
 import accountsRouter from './api/routes/accounts.routes';
+import postsRouter from './api/routes/posts.routes';
+import oauthRouter from './api/routes/oauth.routes';
 
 const app = express();
 const PORT = envConfig.PORT;
@@ -95,6 +97,12 @@ app.use('/api/accounts', accountsRouter);
 // Apply stricter rate limiting to account creation
 app.post('/api/accounts', createAccountLimiter);
 app.post('/api/accounts/bulk-import', bulkImportLimiter);
+
+// Posts routes
+app.use('/api/posts', postsRouter);
+
+// OAuth routes (Instagram, Google, etc.)
+app.use('/api/auth', oauthRouter);
 
 // Future routes (commented for now)
 // app.use('/api/schedules', schedulesRouter);
