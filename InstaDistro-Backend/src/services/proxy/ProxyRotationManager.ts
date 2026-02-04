@@ -1,5 +1,6 @@
 import { pool } from '../../config/database';
 import ProxyService, { ProxyConfig, ProxyType } from './ProxyService';
+import { logger } from '../../config/logger';
 
 // ============================================
 // TYPES
@@ -37,7 +38,7 @@ export class ProxyRotationManager {
     userId: string,
     strategy: RotationStrategy = { type: 'least-loaded' }
   ): Promise<RotationResult> {
-    console.log(`[ProxyRotation] Rotating proxy for account ${accountId}`);
+    logger.info('Rotating proxy for account', { accountId, strategy: strategy.type });
 
     const client = await pool.connect();
 
@@ -98,7 +99,11 @@ export class ProxyRotationManager {
         timestamp: new Date()
       };
 
-      console.log(`[ProxyRotation] Account ${accountId}: ${currentProxyId || 'none'} → ${newProxy.id}`);
+      logger.info('Proxy rotation completed', {
+        accountId,
+        oldProxyId: currentProxyId || 'none',
+        newProxyId: newProxy.id
+      });
 
       return result;
 
@@ -164,13 +169,17 @@ export class ProxyRotationManager {
             result.reason = reason;
             results.push(result);
           } catch (error: any) {
-            console.error(`[ProxyRotation] Failed to rotate proxy for account ${accountId}:`, error.message);
+            logger.error('Failed to rotate proxy for account', {
+              accountId,
+              error: error.message,
+              stack: error.stack
+            });
           }
         }
       }
 
       if (results.length > 0) {
-        console.log(`[ProxyRotation] Auto-rotated ${results.length} proxies for user ${userId}`);
+        logger.info('Auto-rotated proxies', { userId, count: results.length });
       }
 
       return results;
@@ -206,11 +215,16 @@ export class ProxyRotationManager {
           const result = await this.rotateProxyForAccount(accountId, userId, { type: 'least-loaded' });
           results.push(result);
         } catch (error: any) {
-          console.error(`[ProxyRotation] Failed to rotate proxy for account ${accountId}:`, error.message);
+          logger.error('Failed to rotate proxy for account in group', {
+            accountId,
+            groupId,
+            error: error.message,
+            stack: error.stack
+          });
         }
       }
 
-      console.log(`[ProxyRotation] Rotated proxies for ${results.length} accounts in group ${groupId}`);
+      logger.info('Rotated proxies for group', { groupId, count: results.length });
 
       return results;
 

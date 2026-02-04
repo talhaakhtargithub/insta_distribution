@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { logger } from '../../config/logger';
 
 /**
  * Encryption Service for securely storing sensitive data like passwords
@@ -21,8 +22,8 @@ class EncryptionService {
    */
   private generateKey(): string {
     const key = crypto.randomBytes(32).toString('hex');
-    console.warn('⚠️  WARNING: Using generated encryption key. Set ENCRYPTION_KEY in .env for production!');
-    console.warn(`Generated key: ${key}`);
+    logger.warn('⚠️  WARNING: Using generated encryption key. Set ENCRYPTION_KEY in .env for production!');
+    logger.warn(`Generated key: ${key}`);
     return key;
   }
 
@@ -45,7 +46,7 @@ class EncryptionService {
       // Return iv and encrypted data (separated by :)
       return `${iv.toString('hex')}:${encrypted}`;
     } catch (error) {
-      console.error('Encryption error:', error);
+      logger.error('Encryption error:', error);
       throw new Error('Failed to encrypt data');
     }
   }
@@ -74,7 +75,7 @@ class EncryptionService {
 
       return decrypted;
     } catch (error) {
-      console.error('Decryption error:', error);
+      logger.error('Decryption error:', error);
       throw new Error('Failed to decrypt data');
     }
   }

@@ -1,5 +1,6 @@
 import { Pool, PoolConfig } from 'pg';
 import dotenv from 'dotenv';
+import { logger } from './logger';
 
 dotenv.config();
 
@@ -18,11 +19,11 @@ export const pool = new Pool(poolConfig);
 
 // Test connection on startup
 pool.on('connect', () => {
-  console.log('✓ Database connected successfully');
+  logger.info('✓ Database connected successfully');
 });
 
 pool.on('error', (err) => {
-  console.error('✗ Unexpected database error:', err);
+  logger.error('✗ Unexpected database error:', err);
   process.exit(-1);
 });
 
@@ -32,10 +33,10 @@ export async function query(text: string, params?: any[]) {
   try {
     const result = await pool.query(text, params);
     const duration = Date.now() - start;
-    console.log(`Executed query in ${duration}ms:`, text.substring(0, 50));
+    logger.info(`Executed query in ${duration}ms:`, text.substring(0, 50));
     return result;
   } catch (error) {
-    console.error('Database query error:', error);
+    logger.error('Database query error:', error);
     throw error;
   }
 }
@@ -43,5 +44,5 @@ export async function query(text: string, params?: any[]) {
 // Close pool connections gracefully
 export async function closePool() {
   await pool.end();
-  console.log('Database pool closed');
+  logger.info('Database pool closed');
 }

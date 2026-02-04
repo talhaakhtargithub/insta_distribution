@@ -1,4 +1,5 @@
 import Bull from 'bull';
+import { logger } from '../config/logger';
 import ScheduleService from '../services/schedule/ScheduleService';
 
 // ============================================
@@ -29,12 +30,12 @@ export const scheduleQueue = new Bull('schedule-processor', {
 // ============================================
 
 scheduleQueue.process('process-schedules', async () => {
-  console.log('[ScheduleJob] Processing due schedules');
+  logger.info('[ScheduleJob] Processing due schedules');
 
   try {
     const dueSchedules = await ScheduleService.getDueSchedules();
 
-    console.log(`[ScheduleJob] Found ${dueSchedules.length} due schedules`);
+    logger.info(`[ScheduleJob] Found ${dueSchedules.length} due schedules`);
 
     for (const schedule of dueSchedules) {
       try {
@@ -43,13 +44,13 @@ scheduleQueue.process('process-schedules', async () => {
 
         // Queue the actual posting job
         // This would integrate with PostJob or DistributionJob
-        console.log(`[ScheduleJob] Queued schedule ${schedule.id} for ${schedule.accountIds.length} accounts`);
+        logger.info(`[ScheduleJob] Queued schedule ${schedule.id} for ${schedule.accountIds.length} accounts`);
 
         // Mark as completed (simplified - in reality this would be done after actual posting)
         await ScheduleService.updateSchedule(schedule.id, { status: 'completed' });
 
       } catch (error: any) {
-        console.error(`[ScheduleJob] Error processing schedule ${schedule.id}:`, error);
+        logger.error(`[ScheduleJob] Error processing schedule ${schedule.id}:`, error);
         await ScheduleService.updateSchedule(schedule.id, {
           status: 'failed'
         });
@@ -63,7 +64,7 @@ scheduleQueue.process('process-schedules', async () => {
     };
 
   } catch (error: any) {
-    console.error('[ScheduleJob] Error in schedule processor:', error);
+    logger.error('[ScheduleJob] Error in schedule processor:', error);
     throw error;
   }
 });
@@ -85,7 +86,7 @@ export function startScheduleProcessor() {
     }
   );
 
-  console.log('[ScheduleJob] Schedule processor started (checks every 5 minutes)');
+  logger.info('[ScheduleJob] Schedule processor started (checks every 5 minutes)');
 }
 
 // ============================================
@@ -93,11 +94,11 @@ export function startScheduleProcessor() {
 // ============================================
 
 scheduleQueue.on('completed', (job, result) => {
-  console.log(`[ScheduleJob] Job ${job.id} completed:`, result);
+  logger.info(`[ScheduleJob] Job ${job.id} completed:`, result);
 });
 
 scheduleQueue.on('failed', (job, err) => {
-  console.error(`[ScheduleJob] Job ${job?.id} failed:`, err.message);
+  logger.error(`[ScheduleJob] Job ${job?.id} failed:`, err.message);
 });
 
 export default scheduleQueue;

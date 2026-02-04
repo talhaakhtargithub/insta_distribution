@@ -1,4 +1,5 @@
 import { pool } from '../../config/database';
+import { logger } from '../../config/logger';
 import { AccountMetrics } from './MetricsCollector';
 
 // ============================================
@@ -187,7 +188,7 @@ export class AlertManager {
       );
 
       if (recentAlertQuery.rows.length > 0) {
-        console.log(`Alert ${alertType} for account ${accountId} skipped - cooldown active`);
+        logger.debug(`Alert ${alertType} for account ${accountId} skipped - cooldown active`);
         // Return existing alert instead of creating duplicate
         const existingQuery = await client.query(
           'SELECT * FROM health_alerts WHERE id = $1',
@@ -208,7 +209,7 @@ export class AlertManager {
       const alert = this.mapRowToAlert(insertQuery.rows[0]);
       alert.username = username;
 
-      console.log(`Alert created: ${alertType} for account ${username} (${accountId})`);
+      logger.info(`Alert created: ${alertType} for account ${username} (${accountId})`);
 
       // Send notification (in a real app, this would send email/push notification)
       await this.sendNotification(user_id, alert);
@@ -287,7 +288,7 @@ export class AlertManager {
         [alertId]
       );
 
-      console.log(`Alert ${alertId} acknowledged`);
+      logger.info(`Alert ${alertId} acknowledged`);
 
     } finally {
       client.release();
@@ -312,7 +313,7 @@ export class AlertManager {
         [alertId, metadata]
       );
 
-      console.log(`Alert ${alertId} resolved`);
+      logger.info(`Alert ${alertId} resolved`);
 
     } finally {
       client.release();
@@ -357,7 +358,7 @@ export class AlertManager {
         );
         createdAlerts.push(alert);
       } catch (error) {
-        console.error(`Failed to create alert ${alertData.type}:`, error);
+        logger.error(`Failed to create alert ${alertData.type}:`, error);
       }
     }
 
@@ -370,7 +371,7 @@ export class AlertManager {
    */
   async sendNotification(userId: string, alert: Alert): Promise<void> {
     // TODO: Integrate with notification service (email, SMS, push, etc.)
-    console.log(`[NOTIFICATION] User ${userId}: ${alert.severity.toUpperCase()} - ${alert.message}`);
+    logger.info(`[NOTIFICATION] User ${userId}: ${alert.severity.toUpperCase()} - ${alert.message}`);
 
     // For now, just log the notification
     // In production, you would:

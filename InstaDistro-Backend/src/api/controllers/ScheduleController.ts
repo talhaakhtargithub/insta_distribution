@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import ScheduleService from '../../services/schedule/ScheduleService';
 import QueueOptimizer from '../../services/schedule/QueueOptimizer';
 import CalendarService from '../../services/schedule/CalendarService';
+import { logger } from '../../config/logger';
 
 // ============================================
 // SCHEDULE CONTROLLER
@@ -62,7 +63,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error creating schedule:', error);
+      logger.error('Error creating schedule', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -102,7 +103,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error getting schedules:', error);
+      logger.error('Error getting schedules', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -133,7 +134,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error getting schedule:', error);
+      logger.error('Error getting schedule', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -162,7 +163,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error updating schedule:', error);
+      logger.error('Error updating schedule', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -186,7 +187,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error cancelling schedule:', error);
+      logger.error('Error cancelling schedule', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -217,7 +218,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error getting schedule stats:', error);
+      logger.error('Error getting schedule stats', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -256,7 +257,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error optimizing queue:', error);
+      logger.error('Error optimizing queue', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -281,7 +282,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error getting optimal times:', error);
+      logger.error('Error getting optimal times', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -305,7 +306,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error getting optimization report:', error);
+      logger.error('Error getting optimization report', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -338,7 +339,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error getting month calendar:', error);
+      logger.error('Error getting month calendar', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -370,7 +371,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error getting week calendar:', error);
+      logger.error('Error getting week calendar', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -402,7 +403,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error getting day timeline:', error);
+      logger.error('Error getting day timeline', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -437,7 +438,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error getting upcoming events:', error);
+      logger.error('Error getting upcoming events', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -473,7 +474,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error getting conflicts:', error);
+      logger.error('Error getting conflicts', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -505,7 +506,7 @@ export class ScheduleController {
       });
 
     } catch (error: any) {
-      console.error('Error getting heatmap:', error);
+      logger.error('Error getting heatmap', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message

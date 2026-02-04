@@ -8,6 +8,7 @@ import {
   queueDailyReport,
   queueWeeklyReport
 } from '../../jobs/HealthMonitorJob';
+import { logger } from '../../config/logger';
 
 // ============================================
 // HEALTH CONTROLLER
@@ -31,7 +32,7 @@ export class HealthController {
       });
 
     } catch (error: any) {
-      console.error('Error getting account health:', error);
+      logger.error('Error getting account health', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -66,7 +67,7 @@ export class HealthController {
       });
 
     } catch (error: any) {
-      console.error('Error queuing account monitoring:', error);
+      logger.error('Error queuing account monitoring', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -97,7 +98,7 @@ export class HealthController {
       });
 
     } catch (error: any) {
-      console.error('Error getting swarm health:', error);
+      logger.error('Error getting swarm health', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -131,7 +132,7 @@ export class HealthController {
       });
 
     } catch (error: any) {
-      console.error('Error queuing swarm monitoring:', error);
+      logger.error('Error queuing swarm monitoring', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -166,7 +167,7 @@ export class HealthController {
       });
 
     } catch (error: any) {
-      console.error('Error getting alerts:', error);
+      logger.error('Error getting alerts', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -194,7 +195,7 @@ export class HealthController {
       });
 
     } catch (error: any) {
-      console.error('Error getting account alerts:', error);
+      logger.error('Error getting account alerts', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -218,7 +219,7 @@ export class HealthController {
       });
 
     } catch (error: any) {
-      console.error('Error acknowledging alert:', error);
+      logger.error('Error acknowledging alert', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -243,7 +244,7 @@ export class HealthController {
       });
 
     } catch (error: any) {
-      console.error('Error resolving alert:', error);
+      logger.error('Error resolving alert', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -274,7 +275,7 @@ export class HealthController {
       });
 
     } catch (error: any) {
-      console.error('Error getting alert stats:', error);
+      logger.error('Error getting alert stats', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -305,7 +306,7 @@ export class HealthController {
       });
 
     } catch (error: any) {
-      console.error('Error generating daily report:', error);
+      logger.error('Error generating daily report', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -339,7 +340,7 @@ export class HealthController {
       });
 
     } catch (error: any) {
-      console.error('Error queuing daily report:', error);
+      logger.error('Error queuing daily report', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -370,7 +371,7 @@ export class HealthController {
       });
 
     } catch (error: any) {
-      console.error('Error generating weekly report:', error);
+      logger.error('Error generating weekly report', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -404,7 +405,7 @@ export class HealthController {
       });
 
     } catch (error: any) {
-      console.error('Error queuing weekly report:', error);
+      logger.error('Error queuing weekly report', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -439,7 +440,7 @@ export class HealthController {
       });
 
     } catch (error: any) {
-      console.error('Error getting account metrics:', error);
+      logger.error('Error getting account metrics', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message

@@ -1,5 +1,6 @@
 import { pool } from '../../config/database';
 import { encryptionService } from '../auth/EncryptionService';
+import { logger } from '../../config/logger';
 
 export interface Account {
   id: string;
@@ -103,7 +104,7 @@ class AccountService {
         // Unique constraint violation
         throw new Error(`Account with username "${input.username}" already exists`);
       }
-      console.error('Error creating account:', error);
+      logger.error('Error creating account', { error: error.message, username: input.username });
       throw new Error('Failed to create account');
     }
   }
@@ -121,7 +122,7 @@ class AccountService {
       const result = await pool.query(query, [userId]);
       return result.rows;
     } catch (error) {
-      console.error('Error fetching accounts:', error);
+      logger.error('Error fetching accounts', { error, userId });
       throw new Error('Failed to fetch accounts');
     }
   }
@@ -135,7 +136,7 @@ class AccountService {
       const result = await pool.query(query, [accountId]);
       return result.rows[0] || null;
     } catch (error) {
-      console.error('Error fetching account:', error);
+      logger.error('Error fetching account', { error, accountId });
       throw new Error('Failed to fetch account');
     }
   }
@@ -151,7 +152,7 @@ class AccountService {
       }
       return encryptionService.decrypt(account.encrypted_password);
     } catch (error) {
-      console.error('Error decrypting password:', error);
+      logger.error('Error decrypting password', { error, accountId });
       throw new Error('Failed to retrieve password');
     }
   }
@@ -232,7 +233,7 @@ class AccountService {
 
       return result.rows[0];
     } catch (error: any) {
-      console.error('Error updating account:', error);
+      logger.error('Error updating account', { error: error.message, accountId });
       throw new Error(error.message || 'Failed to update account');
     }
   }
@@ -249,7 +250,7 @@ class AccountService {
         throw new Error('Account not found');
       }
     } catch (error: any) {
-      console.error('Error deleting account:', error);
+      logger.error('Error deleting account', { error: error.message, accountId });
       throw new Error(error.message || 'Failed to delete account');
     }
   }
@@ -313,7 +314,7 @@ class AccountService {
         accountId,
       ]);
     } catch (error) {
-      console.error('Error updating auth status:', error);
+      logger.error('Error updating auth status', { error, accountId });
       throw new Error('Failed to update authentication status');
     }
   }
@@ -331,7 +332,7 @@ class AccountService {
       const result = await pool.query(query, [userId, state]);
       return result.rows;
     } catch (error) {
-      console.error('Error fetching accounts by state:', error);
+      logger.error('Error fetching accounts by state', { error, userId, state });
       throw new Error('Failed to fetch accounts');
     }
   }
@@ -387,7 +388,7 @@ class AccountService {
         withProxy: parseInt(row.with_proxy || '0'),
       };
     } catch (error) {
-      console.error('Error fetching swarm stats:', error);
+      logger.error('Error fetching swarm stats', { error, userId });
       throw new Error('Failed to fetch statistics');
     }
   }

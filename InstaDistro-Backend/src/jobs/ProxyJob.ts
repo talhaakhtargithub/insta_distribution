@@ -1,5 +1,6 @@
 import Bull from 'bull';
 import { pool } from '../config/database';
+import { logger } from '../config/logger';
 import ProxyHealthMonitor from '../services/proxy/ProxyHealthMonitor';
 import ProxyRotationManager from '../services/proxy/ProxyRotationManager';
 import ProxyService from '../services/proxy/ProxyService';
@@ -50,12 +51,12 @@ interface ProxyTestJobData {
 proxyQueue.process('health-check', async (job: Bull.Job<HealthCheckJobData>) => {
   const { userId } = job.data;
 
-  console.log(`[ProxyJob] Running health check for user ${userId}`);
+  logger.info(`[ProxyJob] Running health check for user ${userId}`);
 
   try {
     const report = await ProxyHealthMonitor.checkAllProxiesHealth(userId);
 
-    console.log(`[ProxyJob] Health check complete: ${report.healthyProxies}/${report.totalProxies} healthy`);
+    logger.info(`[ProxyJob] Health check complete: ${report.healthyProxies}/${report.totalProxies} healthy`);
 
     // Auto-disable failing proxies
     const disabledCount = await ProxyHealthMonitor.autoDisableFailingProxies(userId);
@@ -73,7 +74,7 @@ proxyQueue.process('health-check', async (job: Bull.Job<HealthCheckJobData>) => 
     };
 
   } catch (error: any) {
-    console.error(`[ProxyJob] Error in health check for user ${userId}:`, error);
+    logger.error(`[ProxyJob] Error in health check for user ${userId}:`, error);
     throw error;
   }
 });
@@ -81,12 +82,12 @@ proxyQueue.process('health-check', async (job: Bull.Job<HealthCheckJobData>) => 
 proxyQueue.process('auto-rotate', async (job: Bull.Job<AutoRotateJobData>) => {
   const { userId } = job.data;
 
-  console.log(`[ProxyJob] Running auto-rotation for user ${userId}`);
+  logger.info(`[ProxyJob] Running auto-rotation for user ${userId}`);
 
   try {
     const results = await ProxyRotationManager.autoRotateProxies(userId);
 
-    console.log(`[ProxyJob] Auto-rotation complete: ${results.length} proxies rotated`);
+    logger.info(`[ProxyJob] Auto-rotation complete: ${results.length} proxies rotated`);
 
     return {
       success: true,
@@ -97,7 +98,7 @@ proxyQueue.process('auto-rotate', async (job: Bull.Job<AutoRotateJobData>) => {
     };
 
   } catch (error: any) {
-    console.error(`[ProxyJob] Error in auto-rotation for user ${userId}:`, error);
+    logger.error(`[ProxyJob] Error in auto-rotation for user ${userId}:`, error);
     throw error;
   }
 });
@@ -105,7 +106,7 @@ proxyQueue.process('auto-rotate', async (job: Bull.Job<AutoRotateJobData>) => {
 proxyQueue.process('proxy-test', async (job: Bull.Job<ProxyTestJobData>) => {
   const { proxyId } = job.data;
 
-  console.log(`[ProxyJob] Testing proxy ${proxyId}`);
+  logger.info(`[ProxyJob] Testing proxy ${proxyId}`);
 
   try {
     const proxy = await ProxyService.getProxyById(proxyId);
@@ -116,7 +117,7 @@ proxyQueue.process('proxy-test', async (job: Bull.Job<ProxyTestJobData>) => {
 
     const result = await ProxyHealthMonitor.checkProxyHealth(proxy);
 
-    console.log(`[ProxyJob] Proxy ${proxyId} test complete: ${result.status} (${result.responseTime}ms)`);
+    logger.info(`[ProxyJob] Proxy ${proxyId} test complete: ${result.status} (${result.responseTime}ms)`);
 
     return {
       success: true,
@@ -129,7 +130,7 @@ proxyQueue.process('proxy-test', async (job: Bull.Job<ProxyTestJobData>) => {
     };
 
   } catch (error: any) {
-    console.error(`[ProxyJob] Error testing proxy ${proxyId}:`, error);
+    logger.error(`[ProxyJob] Error testing proxy ${proxyId}:`, error);
     throw error;
   }
 });
@@ -153,7 +154,7 @@ export async function scheduleProxyHealthChecks() {
 
     const users = usersQuery.rows;
 
-    console.log(`[ProxyJob] Scheduling health checks for ${users.length} users`);
+    logger.info(`[ProxyJob] Scheduling health checks for ${users.length} users`);
 
     for (const user of users) {
       // Schedule health check every 15 minutes
@@ -181,10 +182,10 @@ export async function scheduleProxyHealthChecks() {
       );
     }
 
-    console.log(`[ProxyJob] Scheduled health checks and auto-rotation for ${users.length} users`);
+    logger.info(`[ProxyJob] Scheduled health checks and auto-rotation for ${users.length} users`);
 
   } catch (error) {
-    console.error('[ProxyJob] Error scheduling proxy jobs:', error);
+    logger.error('[ProxyJob] Error scheduling proxy jobs:', error);
   } finally {
     client.release();
   }
@@ -216,15 +217,15 @@ export async function queueProxyTest(proxyId: string): Promise<Bull.Job> {
 // ============================================
 
 proxyQueue.on('completed', (job, result) => {
-  console.log(`[ProxyJob] Job ${job.id} (${job.name}) completed:`, result);
+  logger.info(`[ProxyJob] Job ${job.id} (${job.name}) completed:`, result);
 });
 
 proxyQueue.on('failed', (job, err) => {
-  console.error(`[ProxyJob] Job ${job?.id} (${job?.name}) failed:`, err.message);
+  logger.error(`[ProxyJob] Job ${job?.id} (${job?.name}) failed:`, err.message);
 });
 
 proxyQueue.on('error', (error) => {
-  console.error('[ProxyJob] Queue error:', error);
+  logger.error('[ProxyJob] Queue error:', error);
 });
 
 // ============================================

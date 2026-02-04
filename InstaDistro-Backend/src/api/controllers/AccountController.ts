@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { accountService } from '../../services/swarm/AccountService';
 import { authService } from '../../services/instagram/AuthService';
+import { logger } from '../../config/logger';
 
 export class AccountController {
   /**
@@ -46,7 +47,7 @@ export class AccountController {
         account: accountData,
       });
     } catch (error: any) {
-      console.error('Create account error:', error);
+      logger.error('Create account error', { error: error.message, stack: error.stack });
       res.status(500).json({
         error: 'Server Error',
         message: error.message || 'Failed to create account',
@@ -81,7 +82,7 @@ export class AccountController {
         accounts: accountsData,
       });
     } catch (error: any) {
-      console.error('Get accounts error:', error);
+      logger.error('Get accounts error', { error: error.message, stack: error.stack });
       res.status(500).json({
         error: 'Server Error',
         message: error.message || 'Failed to fetch accounts',
@@ -111,7 +112,7 @@ export class AccountController {
 
       res.json({ account: accountData });
     } catch (error: any) {
-      console.error('Get account error:', error);
+      logger.error('Get account error', { error: error.message, stack: error.stack });
       res.status(500).json({
         error: 'Server Error',
         message: error.message || 'Failed to fetch account',
@@ -138,7 +139,7 @@ export class AccountController {
         account: accountData,
       });
     } catch (error: any) {
-      console.error('Update account error:', error);
+      logger.error('Update account error', { error: error.message, stack: error.stack });
       res.status(500).json({
         error: 'Server Error',
         message: error.message || 'Failed to update account',
@@ -160,7 +161,7 @@ export class AccountController {
         message: 'Account deleted successfully',
       });
     } catch (error: any) {
-      console.error('Delete account error:', error);
+      logger.error('Delete account error', { error: error.message, stack: error.stack });
       res.status(500).json({
         error: 'Server Error',
         message: error.message || 'Failed to delete account',
@@ -196,7 +197,7 @@ export class AccountController {
         failures: result.failed,
       });
     } catch (error: any) {
-      console.error('Bulk import error:', error);
+      logger.error('Bulk import error', { error: error.message, stack: error.stack });
       res.status(500).json({
         error: 'Server Error',
         message: error.message || 'Failed to import accounts',
@@ -220,7 +221,7 @@ export class AccountController {
         timestamp: new Date().toISOString(),
       });
     } catch (error: any) {
-      console.error('Get swarm stats error:', error);
+      logger.error('Get swarm stats error', { error: error.message, stack: error.stack });
       res.status(500).json({
         error: 'Server Error',
         message: error.message || 'Failed to fetch statistics',
@@ -236,7 +237,7 @@ export class AccountController {
     try {
       const { id } = req.params;
 
-      console.log(`Verifying account ${id}`);
+      logger.info('Verifying account', { accountId: id });
 
       const result = await authService.authenticate(id);
 
@@ -256,7 +257,7 @@ export class AccountController {
         accountInfo: result.accountInfo,
       });
     } catch (error: any) {
-      console.error('Verify account error:', error);
+      logger.error('Verify account error', { error: error.message, stack: error.stack });
       res.status(500).json({
         error: 'Server Error',
         message: error.message || 'Verification failed',
@@ -272,7 +273,7 @@ export class AccountController {
     try {
       const { id } = req.params;
 
-      console.log(`Refreshing session for account ${id}`);
+      logger.info('Refreshing session for account', { accountId: id });
 
       const result = await authService.refreshSession(id);
 
@@ -289,7 +290,7 @@ export class AccountController {
         authenticated: result.authenticated,
       });
     } catch (error: any) {
-      console.error('Refresh session error:', error);
+      logger.error('Refresh session error', { error: error.message, stack: error.stack });
       res.status(500).json({
         error: 'Server Error',
         message: error.message || 'Session refresh failed',
@@ -305,7 +306,7 @@ export class AccountController {
     try {
       const userId = req.headers['x-user-id'] as string || 'user_1';
 
-      console.log(`Running health check for user ${userId}`);
+      logger.info('Running health check for user', { userId });
 
       const result = await authService.checkAccountsHealth(userId);
 
@@ -317,7 +318,7 @@ export class AccountController {
         failed: result.failed,
       });
     } catch (error: any) {
-      console.error('Health check error:', error);
+      logger.error('Health check error', { error: error.message, stack: error.stack });
       res.status(500).json({
         error: 'Server Error',
         message: error.message || 'Health check failed',
@@ -341,7 +342,7 @@ export class AccountController {
         });
       }
 
-      console.log(`Submitting 2FA code for account ${id}`);
+      logger.info('Submitting 2FA code for account', { accountId: id });
 
       const result = await authService.handle2FAChallenge(id, code);
 
@@ -358,7 +359,7 @@ export class AccountController {
         authenticated: result.authenticated,
       });
     } catch (error: any) {
-      console.error('2FA challenge error:', error);
+      logger.error('2FA challenge error', { error: error.message, stack: error.stack });
       res.status(500).json({
         error: 'Server Error',
         message: error.message || '2FA verification failed',

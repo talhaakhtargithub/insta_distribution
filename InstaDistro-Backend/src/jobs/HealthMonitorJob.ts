@@ -1,5 +1,6 @@
 import Bull from 'bull';
 import { pool } from '../config/database';
+import { logger } from '../config/logger';
 import HealthMonitor from '../services/health/HealthMonitor';
 
 // ============================================
@@ -53,15 +54,15 @@ interface WeeklyReportJobData {
 healthMonitorQueue.process('monitor-account', async (job: Bull.Job<MonitorAccountJobData>) => {
   const { accountId, userId } = job.data;
 
-  console.log(`[HealthMonitor] Monitoring account ${accountId} for user ${userId}`);
+  logger.info(`[HealthMonitor] Monitoring account ${accountId} for user ${userId}`);
 
   try {
     const report = await HealthMonitor.monitorAccount(accountId);
 
-    console.log(`[HealthMonitor] Account ${accountId} health: ${report.scoreBreakdown.overall}/100 (${report.scoreBreakdown.category})`);
+    logger.info(`[HealthMonitor] Account ${accountId} health: ${report.scoreBreakdown.overall}/100 (${report.scoreBreakdown.category})`);
 
     if (report.alerts.length > 0) {
-      console.log(`[HealthMonitor] Account ${accountId} has ${report.alerts.length} active alerts`);
+      logger.info(`[HealthMonitor] Account ${accountId} has ${report.alerts.length} active alerts`);
     }
 
     return {
@@ -74,7 +75,7 @@ healthMonitorQueue.process('monitor-account', async (job: Bull.Job<MonitorAccoun
     };
 
   } catch (error: any) {
-    console.error(`[HealthMonitor] Error monitoring account ${accountId}:`, error);
+    logger.error(`[HealthMonitor] Error monitoring account ${accountId}:`, error);
     throw error;
   }
 });
@@ -82,14 +83,14 @@ healthMonitorQueue.process('monitor-account', async (job: Bull.Job<MonitorAccoun
 healthMonitorQueue.process('monitor-swarm', async (job: Bull.Job<MonitorSwarmJobData>) => {
   const { userId } = job.data;
 
-  console.log(`[HealthMonitor] Monitoring swarm for user ${userId}`);
+  logger.info(`[HealthMonitor] Monitoring swarm for user ${userId}`);
 
   try {
     const report = await HealthMonitor.monitorSwarm(userId);
 
-    console.log(`[HealthMonitor] Swarm health: ${report.overallHealth.avgScore.toFixed(1)}/100 (${report.overallHealth.category})`);
-    console.log(`[HealthMonitor] ${report.overallHealth.healthyAccounts} healthy, ${report.overallHealth.criticalAccounts} critical`);
-    console.log(`[HealthMonitor] Active alerts: ${report.activeAlerts.length}`);
+    logger.info(`[HealthMonitor] Swarm health: ${report.overallHealth.avgScore.toFixed(1)}/100 (${report.overallHealth.category})`);
+    logger.info(`[HealthMonitor] ${report.overallHealth.healthyAccounts} healthy, ${report.overallHealth.criticalAccounts} critical`);
+    logger.info(`[HealthMonitor] Active alerts: ${report.activeAlerts.length}`);
 
     return {
       success: true,
@@ -103,7 +104,7 @@ healthMonitorQueue.process('monitor-swarm', async (job: Bull.Job<MonitorSwarmJob
     };
 
   } catch (error: any) {
-    console.error(`[HealthMonitor] Error monitoring swarm for user ${userId}:`, error);
+    logger.error(`[HealthMonitor] Error monitoring swarm for user ${userId}:`, error);
     throw error;
   }
 });
@@ -111,12 +112,12 @@ healthMonitorQueue.process('monitor-swarm', async (job: Bull.Job<MonitorSwarmJob
 healthMonitorQueue.process('daily-report', async (job: Bull.Job<DailyReportJobData>) => {
   const { userId } = job.data;
 
-  console.log(`[HealthMonitor] Generating daily report for user ${userId}`);
+  logger.info(`[HealthMonitor] Generating daily report for user ${userId}`);
 
   try {
     const report = await HealthMonitor.generateDailyReport(userId);
 
-    console.log(`[HealthMonitor] Daily report generated: ${report.summary}`);
+    logger.info(`[HealthMonitor] Daily report generated: ${report.summary}`);
 
     // In production, you would send this report via email or notification
     // await emailService.sendDailyReport(userId, report);
@@ -132,7 +133,7 @@ healthMonitorQueue.process('daily-report', async (job: Bull.Job<DailyReportJobDa
     };
 
   } catch (error: any) {
-    console.error(`[HealthMonitor] Error generating daily report for user ${userId}:`, error);
+    logger.error(`[HealthMonitor] Error generating daily report for user ${userId}:`, error);
     throw error;
   }
 });
@@ -140,12 +141,12 @@ healthMonitorQueue.process('daily-report', async (job: Bull.Job<DailyReportJobDa
 healthMonitorQueue.process('weekly-report', async (job: Bull.Job<WeeklyReportJobData>) => {
   const { userId } = job.data;
 
-  console.log(`[HealthMonitor] Generating weekly report for user ${userId}`);
+  logger.info(`[HealthMonitor] Generating weekly report for user ${userId}`);
 
   try {
     const report = await HealthMonitor.generateWeeklyReport(userId);
 
-    console.log(`[HealthMonitor] Weekly report generated: ${report.summary}`);
+    logger.info(`[HealthMonitor] Weekly report generated: ${report.summary}`);
 
     // In production, you would send this report via email or notification
     // await emailService.sendWeeklyReport(userId, report);
@@ -162,7 +163,7 @@ healthMonitorQueue.process('weekly-report', async (job: Bull.Job<WeeklyReportJob
     };
 
   } catch (error: any) {
-    console.error(`[HealthMonitor] Error generating weekly report for user ${userId}:`, error);
+    logger.error(`[HealthMonitor] Error generating weekly report for user ${userId}:`, error);
     throw error;
   }
 });
@@ -187,7 +188,7 @@ export async function scheduleAutoMonitoring() {
 
     const users = usersQuery.rows;
 
-    console.log(`[HealthMonitor] Scheduling auto-monitoring for ${users.length} users`);
+    logger.info(`[HealthMonitor] Scheduling auto-monitoring for ${users.length} users`);
 
     for (const user of users) {
       // Schedule swarm monitoring every 6 hours
@@ -227,10 +228,10 @@ export async function scheduleAutoMonitoring() {
       );
     }
 
-    console.log(`[HealthMonitor] Auto-monitoring scheduled for ${users.length} users`);
+    logger.info(`[HealthMonitor] Auto-monitoring scheduled for ${users.length} users`);
 
   } catch (error) {
-    console.error('[HealthMonitor] Error scheduling auto-monitoring:', error);
+    logger.error('[HealthMonitor] Error scheduling auto-monitoring:', error);
   } finally {
     client.release();
   }
@@ -269,15 +270,15 @@ export async function queueWeeklyReport(userId: string): Promise<Bull.Job> {
 // ============================================
 
 healthMonitorQueue.on('completed', (job, result) => {
-  console.log(`[HealthMonitor] Job ${job.id} (${job.name}) completed:`, result);
+  logger.info(`[HealthMonitor] Job ${job.id} (${job.name}) completed:`, result);
 });
 
 healthMonitorQueue.on('failed', (job, err) => {
-  console.error(`[HealthMonitor] Job ${job?.id} (${job?.name}) failed:`, err.message);
+  logger.error(`[HealthMonitor] Job ${job?.id} (${job?.name}) failed:`, err.message);
 });
 
 healthMonitorQueue.on('error', (error) => {
-  console.error('[HealthMonitor] Queue error:', error);
+  logger.error('[HealthMonitor] Queue error:', error);
 });
 
 // ============================================

@@ -2,6 +2,7 @@ import { pool } from '../../config/database';
 import MetricsCollector, { AccountMetrics, SwarmMetrics } from './MetricsCollector';
 import HealthScorer, { HealthScoreBreakdown } from './HealthScorer';
 import AlertManager, { Alert } from './AlertManager';
+import { logger } from '../../config/logger';
 
 // ============================================
 // TYPES
@@ -155,7 +156,11 @@ export class HealthMonitor {
             healthyCount++;
           }
         } catch (error) {
-          console.error(`Error monitoring account ${account.id}:`, error);
+          logger.error('Error monitoring account', {
+            accountId: account.id,
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
         }
       }
 
@@ -305,7 +310,11 @@ export class HealthMonitor {
           issues: flags
         });
       } catch (error) {
-        console.error(`Error calculating weekly score for ${account.id}:`, error);
+        logger.error('Error calculating weekly score for account', {
+          accountId: account.id,
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
       }
     }
 

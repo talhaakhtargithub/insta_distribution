@@ -1,4 +1,5 @@
 import ProxyService, { ProxyConfig, ProxyHealthStatus, ProxyTestResult } from './ProxyService';
+import { logger } from '../../config/logger';
 
 // ============================================
 // TYPES
@@ -34,7 +35,7 @@ export class ProxyHealthMonitor {
    * Check health of a single proxy
    */
   async checkProxyHealth(proxy: ProxyConfig): Promise<HealthCheckResult> {
-    console.log(`[ProxyHealth] Checking health for proxy ${proxy.id} (${proxy.host}:${proxy.port})`);
+    logger.debug('Checking health for proxy', { proxyId: proxy.id, host: proxy.host, port: proxy.port });
 
     const testResult = await ProxyService.testProxy(proxy);
 
@@ -71,7 +72,11 @@ export class ProxyHealthMonitor {
       testResult.success
     );
 
-    console.log(`[ProxyHealth] Proxy ${proxy.id} health: ${healthStatus} (${testResult.responseTime}ms)`);
+    logger.debug('Proxy health check result', {
+      proxyId: proxy.id,
+      healthStatus,
+      responseTime: testResult.responseTime
+    });
 
     return {
       proxyId: proxy.id,
@@ -87,7 +92,7 @@ export class ProxyHealthMonitor {
    * Check health of all proxies for a user
    */
   async checkAllProxiesHealth(userId: string): Promise<HealthCheckReport> {
-    console.log(`[ProxyHealth] Checking health for all proxies of user ${userId}`);
+    logger.info('Checking health for all proxies', { userId });
 
     const proxies = await ProxyService.getProxiesByUser(userId, false);
 
@@ -115,7 +120,11 @@ export class ProxyHealthMonitor {
     const avgResponseTime = results.reduce((sum, r) => sum + r.responseTime, 0) / results.length;
     const successRate = (results.filter(r => r.success).length / results.length) * 100;
 
-    console.log(`[ProxyHealth] Health check complete: ${healthyProxies}/${proxies.length} healthy`);
+    logger.info('Proxy health check complete', {
+      userId,
+      healthyProxies,
+      totalProxies: proxies.length
+    });
 
     return {
       userId,
@@ -151,7 +160,10 @@ export class ProxyHealthMonitor {
         (proxy.healthStatus === 'dead' && proxy.requestCount >= 5) ||
         proxy.errorCount > 50
       ) {
-        console.log(`[ProxyHealth] Auto-disabling proxy ${proxy.id} (error rate: ${errorRate.toFixed(1)}%)`);
+        logger.warn('Auto-disabling failing proxy', {
+          proxyId: proxy.id,
+          errorRate: errorRate.toFixed(1)
+        });
 
         await ProxyService.updateProxy(proxy.id, { isActive: false });
         disabledCount++;
@@ -159,7 +171,7 @@ export class ProxyHealthMonitor {
     }
 
     if (disabledCount > 0) {
-      console.log(`[ProxyHealth] Auto-disabled ${disabledCount} failing proxies for user ${userId}`);
+      logger.info('Auto-disabled failing proxies', { userId, count: disabledCount });
     }
 
     return disabledCount;
@@ -234,7 +246,7 @@ export class ProxyHealthMonitor {
         [proxyId]
       );
 
-      console.log(`[ProxyHealth] Reset metrics for proxy ${proxyId}`);
+      logger.debug('Reset metrics for proxy', { proxyId });
 
     } finally {
       client.release();

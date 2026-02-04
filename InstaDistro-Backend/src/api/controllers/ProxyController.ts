@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import ProxyService from '../../services/proxy/ProxyService';
 import ProxyHealthMonitor from '../../services/proxy/ProxyHealthMonitor';
 import ProxyRotationManager from '../../services/proxy/ProxyRotationManager';
+import { logger } from '../../config/logger';
 
 // ============================================
 // PROXY CONTROLLER
@@ -58,7 +59,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error creating proxy:', error);
+      logger.error('Error creating proxy', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -93,7 +94,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error getting proxies:', error);
+      logger.error('Error getting proxies', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -124,7 +125,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error getting proxy:', error);
+      logger.error('Error getting proxy', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -149,7 +150,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error updating proxy:', error);
+      logger.error('Error updating proxy', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -173,7 +174,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error deleting proxy:', error);
+      logger.error('Error deleting proxy', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -206,7 +207,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error testing proxy:', error);
+      logger.error('Error testing proxy', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -230,7 +231,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error assigning proxy:', error);
+      logger.error('Error assigning proxy', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -254,7 +255,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error unassigning proxy:', error);
+      logger.error('Error unassigning proxy', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -285,7 +286,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error getting proxy stats:', error);
+      logger.error('Error getting proxy stats', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -316,7 +317,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error checking proxy health:', error);
+      logger.error('Error checking proxy health', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -349,7 +350,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error checking proxy health:', error);
+      logger.error('Error checking proxy health', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -382,7 +383,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error rotating proxy:', error);
+      logger.error('Error rotating proxy', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -416,7 +417,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error auto-rotating proxies:', error);
+      logger.error('Error auto-rotating proxies', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -451,7 +452,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error rotating group proxies:', error);
+      logger.error('Error rotating group proxies', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -482,7 +483,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error getting rotation stats:', error);
+      logger.error('Error getting rotation stats', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -506,7 +507,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error getting proxy performance:', error);
+      logger.error('Error getting proxy performance', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
@@ -530,7 +531,7 @@ export class ProxyController {
       });
 
     } catch (error: any) {
-      console.error('Error getting proxy trend:', error);
+      logger.error('Error getting proxy trend', { error: error.message, stack: error.stack });
       res.status(500).json({
         success: false,
         error: error.message
