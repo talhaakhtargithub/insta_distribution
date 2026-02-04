@@ -6,6 +6,309 @@ This document outlines what's been completed and what remains to build a complet
 
 ---
 
+## 👋 FOR NEW DEVELOPERS - START HERE!
+
+### Project Overview
+This is an **Instagram Swarm Management System** that allows managing 100+ Instagram accounts from a single mobile app. Users can:
+- Import/create Instagram accounts
+- Post content to multiple accounts simultaneously
+- Automate warmup protocols (14-day schedule)
+- Generate unique content variations per account
+- Monitor account health in real-time
+
+**Tech Stack:**
+- **Backend:** Node.js 20 + TypeScript + Express.js
+- **Database:** PostgreSQL 15 (9 tables)
+- **Cache/Queue:** Redis 7 + Bull
+- **Mobile:** React Native (Expo)
+- **Deployment:** Docker + Docker Compose
+- **Instagram APIs:**
+  - `instagram-private-api` (Personal accounts)
+  - Instagram Graph API (Business accounts)
+
+### Quick Start (5 minutes)
+
+```bash
+# 1. Clone repository
+git clone git@github.com:talhaakhtargithub/insta_distribution.git
+cd insta_distribution
+
+# 2. Start backend
+cd InstaDistro-Backend
+npm install
+cp .env.example .env  # Edit with your values
+docker-compose up -d   # Starts PostgreSQL & Redis
+npm run migrate        # Run database migrations
+npm run dev            # Start backend on :3000
+
+# 3. Test backend (new terminal)
+curl http://localhost:3000/health
+# Should return: {"status":"ok","database":"connected"}
+
+# 4. Start mobile app (new terminal)
+cd ../InstaDistro
+npm install
+npx expo start  # Scan QR code with Expo Go app
+```
+
+### Key Files to Understand
+
+**Backend Structure:**
+```
+InstaDistro-Backend/
+├── src/
+│   ├── index.ts                              # Express server entry point
+│   ├── config/
+│   │   ├── database.ts                       # PostgreSQL connection
+│   │   ├── env.ts                            # Environment config
+│   │   └── logger.ts                         # Winston logging
+│   ├── api/
+│   │   ├── controllers/
+│   │   │   ├── AccountController.ts          # Account CRUD
+│   │   │   ├── PostController.ts             # Posting endpoints
+│   │   │   └── OAuthController.ts            # OAuth flow
+│   │   ├── routes/
+│   │   │   ├── accounts.routes.ts            # Account routes
+│   │   │   ├── posts.routes.ts               # Post routes
+│   │   │   └── oauth.routes.ts               # OAuth routes
+│   │   └── middlewares/
+│   │       ├── auth.middleware.ts            # JWT auth (TODO)
+│   │       ├── rateLimit.middleware.ts       # Rate limiting
+│   │       └── security.middleware.ts        # Security headers
+│   ├── services/
+│   │   ├── instagram/
+│   │   │   ├── PrivateApiClient.ts          # Instagram Private API ✨
+│   │   │   ├── GraphApiClient.ts            # Instagram Graph API ✨
+│   │   │   └── PostingService.ts            # Unified posting ✨
+│   │   ├── auth/
+│   │   │   ├── EncryptionService.ts         # AES-256 encryption
+│   │   │   └── InstagramOAuthService.ts     # OAuth flow ✨
+│   │   └── swarm/
+│   │       └── AccountService.ts             # Account business logic
+│   └── db/
+│       ├── migrate.ts                        # Migration runner
+│       └── migrations/                       # SQL migrations (9 files)
+├── docker-compose.yml                        # PostgreSQL + Redis
+├── Dockerfile                                # Production container
+└── package.json
+
+✨ = New in Phase 2.1
+```
+
+**Frontend Structure:**
+```
+InstaDistro/
+├── src/
+│   ├── screens/
+│   │   ├── AccountsScreen.tsx               # Account management
+│   │   ├── DistributionScreen.tsx           # Content distribution
+│   │   └── HomeScreen.tsx                   # Dashboard
+│   ├── services/
+│   │   └── backendApi.ts                    # Backend API client
+│   ├── hooks/
+│   │   └── useAccounts.ts                   # Account state hook
+│   └── components/
+│       └── AccountCard.tsx                  # Account UI card
+└── App.tsx                                  # Root component
+```
+
+### Important Documentation
+
+**Must Read (in order):**
+1. [SETUP_COMPLETE.md](SETUP_COMPLETE.md) - Complete setup guide with architecture
+2. [OAUTH_SETUP.md](InstaDistro-Backend/OAUTH_SETUP.md) - OAuth setup for business accounts
+3. [InstaDistro-Backend/README.md](InstaDistro-Backend/README.md) - Backend API documentation
+4. [InstaDistro-Backend/DEPLOYMENT.md](InstaDistro-Backend/DEPLOYMENT.md) - Production deployment
+
+### Development Workflow
+
+```bash
+# Create feature branch
+git checkout -b feature/your-feature-name
+
+# Make changes...
+
+# Run TypeScript type check
+cd InstaDistro-Backend
+npx tsc --noEmit
+
+# Build to verify no errors
+npm run build
+
+# Commit with descriptive message
+git add .
+git commit -m "feat: add new feature description"
+
+# Push to GitHub
+git push origin feature/your-feature-name
+```
+
+### Common Commands
+
+**Backend:**
+```bash
+# Development
+npm run dev              # Start with nodemon (auto-reload)
+npm run build            # Build TypeScript
+npm start                # Run production build
+
+# Database
+npm run migrate          # Run migrations
+docker exec -it insta-swarm-db psql -U swarm_user -d insta_swarm  # Access DB
+
+# Docker
+docker-compose up -d     # Start services
+docker-compose down      # Stop services
+docker-compose logs -f   # View logs
+```
+
+**Testing:**
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# List accounts
+curl http://localhost:3000/api/accounts -H "x-user-id: user_1"
+
+# Create account
+curl -X POST http://localhost:3000/api/accounts \
+  -H "Content-Type: application/json" \
+  -H "x-user-id: user_1" \
+  -d '{"username":"test","password":"pass","accountType":"personal"}'
+
+# Check OAuth providers
+curl http://localhost:3000/api/auth/providers
+```
+
+### What's Already Built
+
+✅ **Complete Features:**
+- PostgreSQL database with 9 tables
+- Redis for caching & job queues
+- Docker deployment setup
+- Account management API (CRUD + bulk import)
+- AES-256 password encryption
+- Rate limiting & security middleware
+- Winston logging (file + console)
+- Instagram Private API client (personal accounts)
+- Instagram Graph API client (business accounts)
+- Unified posting service (auto-selects API)
+- OAuth flow for business accounts
+- Mobile app with account management UI
+
+✅ **Backend Endpoints (All Working):**
+```
+GET  /health                          # Health check
+GET  /api/accounts                    # List accounts
+POST /api/accounts                    # Create account
+GET  /api/accounts/:id                # Get account
+PUT  /api/accounts/:id                # Update account
+DELETE /api/accounts/:id              # Delete account
+POST /api/accounts/bulk-import        # Import CSV
+GET  /api/accounts/stats/swarm        # Swarm statistics
+
+POST /api/posts/immediate             # Post immediately ✨
+POST /api/posts/verify-account        # Verify credentials ✨
+GET  /api/posts/history               # Posting history ✨
+
+GET  /api/auth/providers              # List OAuth providers ✨
+GET  /api/auth/instagram/authorize    # Start OAuth ✨
+GET  /api/auth/instagram/callback     # OAuth callback ✨
+POST /api/auth/instagram/refresh-token # Refresh token ✨
+```
+
+### Database Schema (Quick Reference)
+
+**Main Tables:**
+- `accounts` - Instagram accounts (username, encrypted password, tokens)
+- `proxies` - Proxy configuration for accounts
+- `schedules` - Posting schedules
+- `post_results` - Posting history & results
+- `warmup_tasks` - 14-day warmup automation tasks
+- `content_variations` - Video variations per account
+- `account_health_scores` - Real-time health monitoring
+- `account_groups` - Group organization
+- `swarm_distribution_logs` - Distribution analytics
+
+**Key Relationships:**
+- 1 User → N Accounts
+- 1 Account → 1 Proxy (optional)
+- 1 Account → N Schedules
+- 1 Account → N PostResults
+- 1 Account → N WarmupTasks
+
+### Authentication Methods
+
+**Two ways to connect Instagram accounts:**
+
+1. **Username/Password** (Personal + Business)
+   - Direct login with credentials
+   - Uses `instagram-private-api`
+   - Full automation capabilities
+   - Password encrypted with AES-256
+
+2. **OAuth 2.0** (Business only)
+   - Official Instagram API
+   - No password storage
+   - Requires Facebook App setup
+   - See [OAUTH_SETUP.md](InstaDistro-Backend/OAUTH_SETUP.md)
+
+### Troubleshooting
+
+**Backend won't start:**
+```bash
+# Check if PostgreSQL is running
+docker ps | grep postgres
+
+# Check logs
+docker-compose logs db
+
+# Reset database
+docker-compose down -v
+docker-compose up -d
+npm run migrate
+```
+
+**TypeScript errors:**
+```bash
+# Clean build
+rm -rf dist/
+npm run build
+```
+
+**Database issues:**
+```bash
+# Access PostgreSQL
+docker exec -it insta-swarm-db psql -U swarm_user -d insta_swarm
+
+# Check tables
+\dt
+
+# Check accounts
+SELECT id, username, account_type, is_authenticated FROM accounts;
+```
+
+### Need Help?
+
+- **Architecture questions:** Read [SETUP_COMPLETE.md](SETUP_COMPLETE.md)
+- **OAuth setup:** Read [OAUTH_SETUP.md](InstaDistro-Backend/OAUTH_SETUP.md)
+- **API docs:** Read [InstaDistro-Backend/README.md](InstaDistro-Backend/README.md)
+- **Deployment:** Read [InstaDistro-Backend/DEPLOYMENT.md](InstaDistro-Backend/DEPLOYMENT.md)
+
+**Useful logs:**
+```bash
+# Application logs
+tail -f InstaDistro-Backend/logs/combined.log
+tail -f InstaDistro-Backend/logs/error.log
+
+# Docker logs
+docker-compose logs -f
+```
+
+---
+
+---
+
 ## 🎯 What's Complete (Summary)
 
 ✅ **Phase 1:** Production-ready backend infrastructure with PostgreSQL, Redis, Docker
