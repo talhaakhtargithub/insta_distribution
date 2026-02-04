@@ -5,11 +5,43 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================
--- ACCOUNTS TABLE
+-- USERS TABLE (App Users)
+-- ============================================
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+  -- Authentication
+  email VARCHAR(255) NOT NULL UNIQUE,
+  google_id VARCHAR(255) UNIQUE,
+  auth_provider VARCHAR(20) CHECK (auth_provider IN ('google', 'email')) DEFAULT 'google',
+
+  -- Profile
+  name VARCHAR(255),
+  given_name VARCHAR(255),
+  family_name VARCHAR(255),
+  picture TEXT,
+  locale VARCHAR(10),
+
+  -- Status
+  email_verified BOOLEAN DEFAULT false,
+  is_active BOOLEAN DEFAULT true,
+
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  last_login TIMESTAMP
+);
+
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_google_id ON users(google_id);
+CREATE INDEX idx_users_auth_provider ON users(auth_provider);
+
+-- ============================================
+-- ACCOUNTS TABLE (Instagram Accounts)
 -- ============================================
 CREATE TABLE IF NOT EXISTS accounts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id VARCHAR(255) NOT NULL,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   username VARCHAR(255) NOT NULL UNIQUE,
   encrypted_password TEXT,
   account_type VARCHAR(20) CHECK (account_type IN ('personal', 'business')) DEFAULT 'personal',

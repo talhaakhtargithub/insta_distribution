@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
 import { instagramOAuthService } from '../../services/auth/InstagramOAuthService';
+import { googleOAuthService } from '../../services/auth/GoogleOAuthService';
+import { userService } from '../../services/auth/UserService';
+import { jwtService } from '../../services/auth/JwtService';
 import { accountService } from '../../services/swarm/AccountService';
 import { logger } from '../../config/logger';
 
@@ -219,6 +222,271 @@ export class OAuthController {
       res.status(500).json({
         error: 'Server Error',
         message: error.message || 'Failed to get providers',
+      });
+    }
+  }
+
+  /**
+   * GET /api/auth/google/authorize
+   * Get Google OAuth authorization URL
+   */
+  async googleAuthorize(req: Request, res: Response) {
+    try {
+      if (!googleOAuthService.isConfigured()) {
+        return res.status(503).json({
+          error: 'OAuth Not Configured',
+          message: 'Google OAuth is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.',
+        });
+      }
+
+      // Generate random state for CSRF protection
+      const state = Math.random().toString(36).substring(7);
+
+      const authUrl = googleOAuthService.getAuthorizationUrl(state);
+
+      logger.info('Redirecting user to Google OAuth authorization');
+
+      // Return URL to client (mobile app will open in browser)
+      res.json({
+        success: true,
+        authUrl,
+        state,
+      });
+    } catch (error: any) {
+      logger.error('Google OAuth authorize error:', error);
+      res.status(500).json({
+        error: 'Server Error',
+        message: error.message || 'Failed to generate authorization URL',
+      });
+    }
+  }
+
+  /**
+   * GET /api/auth/google/callback
+   * Handle Google OAuth callback
+   */
+  async googleCallback(req: Request, res: Response) {
+    try {
+      const { code, state, error, error_description } = req.query;
+
+      // Handle OAuth errors
+      if (error) {
+        logger.warn(`Google OAuth error: ${error} - ${error_description}`);
+        return res.status(400).json({
+          error: 'OAuth Error',
+          message: error_description || 'Authorization failed',
+        });
+      }
+
+      // Validate code parameter
+      if (!code || typeof code !== 'string') {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'Authorization code is required',
+        });
+      }
+
+      logger.info('Received Google OAuth callback, exchanging code for tokens');
+
+      // Exchange code for tokens and get user info
+      const result = await googleOAuthService.authenticateWithCode(code);
+
+      if (!result.success || !result.userInfo) {
+        return res.status(400).json({
+          error: 'Authentication Failed',
+          message: result.error || 'Failed to authenticate with Google',
+        });
+      }
+
+      // Find or create user in database
+      const user = await userService.findOrCreateFromGoogle(result.userInfo);
+
+      // Generate JWT tokens
+      const tokens = jwtService.generateTokenPair({
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture,
+        provider: 'google',
+      });
+
+      logger.info(`Google OAuth successful for user: ${user.email}`);
+
+      // Return tokens and user info
+      res.json({
+        success: true,
+        message: 'Google authentication successful',
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          picture: user.picture,
+          email_verified: user.email_verified,
+        },
+        tokens: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresIn: tokens.expiresIn,
+        },
+      });
+    } catch (error: any) {
+      logger.error('Google OAuth callback error:', error);
+      res.status(500).json({
+        error: 'Server Error',
+        message: error.message || 'Failed to process OAuth callback',
+      });
+    }
+  }
+
+  /**
+   * POST /api/auth/google/verify
+   * Verify Google ID token (for mobile apps)
+   */
+  async googleVerifyToken(req: Request, res: Response) {
+    try {
+      const { idToken } = req.body;
+
+      if (!idToken) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'ID token is required',
+        });
+      }
+
+      logger.info('Verifying Google ID token');
+
+      // Verify ID token
+      const result = await googleOAuthService.verifyIdToken(idToken);
+
+      if (!result.success || !result.userInfo) {
+        return res.status(400).json({
+          error: 'Verification Failed',
+          message: result.error || 'Failed to verify ID token',
+        });
+      }
+
+      // Find or create user in database
+      const user = await userService.findOrCreateFromGoogle(result.userInfo);
+
+      // Generate JWT tokens
+      const tokens = jwtService.generateTokenPair({
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture,
+        provider: 'google',
+      });
+
+      logger.info(`Google ID token verified for user: ${user.email}`);
+
+      // Return tokens and user info
+      res.json({
+        success: true,
+        message: 'Google authentication successful',
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          picture: user.picture,
+          email_verified: user.email_verified,
+        },
+        tokens: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresIn: tokens.expiresIn,
+        },
+      });
+    } catch (error: any) {
+      logger.error('Google token verification error:', error);
+      res.status(500).json({
+        error: 'Server Error',
+        message: error.message || 'Failed to verify token',
+      });
+    }
+  }
+
+  /**
+   * POST /api/auth/refresh
+   * Refresh access token using refresh token
+   */
+  async refreshToken(req: Request, res: Response) {
+    try {
+      const { refreshToken } = req.body;
+
+      if (!refreshToken) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'Refresh token is required',
+        });
+      }
+
+      logger.info('Refreshing access token');
+
+      // Verify refresh token
+      const payload = jwtService.verifyRefreshToken(refreshToken);
+
+      // Generate new access token
+      const newAccessToken = jwtService.generateAccessToken(payload);
+
+      logger.info(`Token refreshed for user: ${payload.email}`);
+
+      res.json({
+        success: true,
+        message: 'Token refreshed successfully',
+        accessToken: newAccessToken,
+        expiresIn: jwtService['parseExpiry'](jwtService['jwtExpiry']),
+      });
+    } catch (error: any) {
+      logger.error('Token refresh error:', error);
+      res.status(401).json({
+        error: 'Unauthorized',
+        message: error.message || 'Failed to refresh token',
+      });
+    }
+  }
+
+  /**
+   * GET /api/auth/me
+   * Get current user profile
+   */
+  async getCurrentUser(req: Request, res: Response) {
+    try {
+      // User ID should be set by auth middleware
+      const userId = (req as any).user?.userId;
+
+      if (!userId) {
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'User not authenticated',
+        });
+      }
+
+      const user = await userService.findById(userId);
+
+      if (!user) {
+        return res.status(404).json({
+          error: 'Not Found',
+          message: 'User not found',
+        });
+      }
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          picture: user.picture,
+          email_verified: user.email_verified,
+          created_at: user.created_at,
+          last_login: user.last_login,
+        },
+      });
+    } catch (error: any) {
+      logger.error('Get current user error:', error);
+      res.status(500).json({
+        error: 'Server Error',
+        message: error.message || 'Failed to get user profile',
       });
     }
   }

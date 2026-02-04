@@ -1,23 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
+import { jwtService } from '../../services/auth/JwtService';
 import { logger } from '../../config/logger';
 
 /**
  * Authentication Middleware
  *
- * For now, this is a placeholder that passes through all requests.
- * In production, this should:
- * 1. Extract JWT token from Authorization header
- * 2. Verify JWT token
- * 3. Attach user info to req.user
- * 4. Reject invalid/expired tokens
- *
- * TODO: Implement full JWT authentication
+ * Verifies JWT tokens and attaches user info to request
  */
 
 export interface AuthenticatedRequest extends Request {
   user?: {
-    id: string;
+    userId: string;
     email: string;
+    name?: string;
+    picture?: string;
+    provider: 'google' | 'email';
   };
 }
 
@@ -27,20 +24,64 @@ export const authMiddleware = (
   next: NextFunction
 ): void => {
   try {
-    // TODO: Implement JWT token verification
-    // const token = req.headers.authorization?.split(' ')[1];
-    // if (!token) {
-    //   res.status(401).json({ error: 'Unauthorized', message: 'No token provided' });
-    //   return;
-    // }
-    // const decoded = jwt.verify(token, JWT_SECRET);
-    // (req as AuthenticatedRequest).user = decoded;
+    // Extract token from Authorization header (Bearer token)
+    const authHeader = req.headers.authorization;
 
-    // For now, just pass through
-    // In development, we use x-user-id header
+    if (!authHeader) {
+      // Fall back to x-user-id header for development/backward compatibility
+      const userId = req.headers['x-user-id'] as string;
+      if (userId) {
+        (req as AuthenticatedRequest).user = {
+          userId,
+          email: 'dev@example.com',
+          provider: 'email',
+        };
+        return next();
+      }
+
+      res.status(401).json({
+        error: 'Unauthorized',
+        message: 'No authentication token provided',
+      });
+      return;
+    }
+
+    // Check if it's a Bearer token
+    if (!authHeader.startsWith('Bearer ')) {
+      res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid token format. Use "Bearer <token>"',
+      });
+      return;
+    }
+
+    // Extract token
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+    // Verify token
+    const payload = jwtService.verifyAccessToken(token);
+
+    // Attach user info to request
+    (req as AuthenticatedRequest).user = {
+      userId: payload.userId,
+      email: payload.email,
+      name: payload.name,
+      picture: payload.picture,
+      provider: payload.provider,
+    };
+
     next();
-  } catch (error) {
-    logger.error('Auth middleware error:', error);
+  } catch (error: any) {
+    logger.error('Auth middleware error:', error.message);
+
+    if (error.message === 'Token expired') {
+      res.status(401).json({
+        error: 'Token Expired',
+        message: 'Access token has expired. Please refresh your token.',
+      });
+      return;
+    }
+
     res.status(401).json({
       error: 'Unauthorized',
       message: 'Invalid or expired token',
