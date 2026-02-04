@@ -31,17 +31,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added — Agent Skills
 - `.claude/settings.json` — project-level agent configuration: auto TypeScript check hook (postToolUse), build-validate skill, dev-state reader, health-check skill
 
+### Added — Phase 6: Account Groups
+- **GroupService** (`src/services/groups/GroupService.ts`) — Full CRUD for account groups; account-to-group management (add/remove/move); group statistics and health scoring
+- **GroupController** (`src/api/controllers/GroupController.ts`) — 8 API endpoints for group management
+- **Groups API** — `POST /api/groups`, `GET /api/groups`, `PUT /api/groups/:id`, `DELETE /api/groups/:id`, `POST /api/groups/:id/accounts/add`, `POST /api/groups/:id/accounts/remove`, `GET /api/groups/:id/stats`
+
+### Added — Phase 7: Health Monitoring ✨ NEW
+- **MetricsCollector** (`src/services/health/MetricsCollector.ts`) — collects posting metrics, error rates, rate limit hits, warmup progress, engagement data; generates daily/weekly aggregates
+- **HealthScorer** (`src/services/health/HealthScorer.ts`) — calculates health score (0-100) with weighted factors: post success rate (30%), error rate (25%), rate limits (20%), login challenges (15%), account state (10%); engagement scoring; risk assessment; categorization (excellent/good/fair/poor/critical)
+- **AlertManager** (`src/services/health/AlertManager.ts`) — 10 alert types (health critical, shadowban suspected, high error rate, rate limit frequent, login challenge, account suspended/banned, inactive, warmup stalled); auto-alert creation based on rules; cooldown periods to prevent spam; alert acknowledgment and resolution
+- **HealthMonitor** (`src/services/health/HealthMonitor.ts`) — orchestrates monitoring; generates account and swarm health reports; daily/weekly report generation; auto-updates health scores in database
+- **HealthMonitorJob** (`src/jobs/HealthMonitorJob.ts`) — Bull queue for background monitoring; runs every 6 hours for all active users; daily report at 9 AM; weekly report every Monday
+- **HealthController** (`src/api/controllers/HealthController.ts`) — 14 API endpoints for health monitoring
+- **Health API** — `GET /api/health/account/:id`, `POST /api/health/account/:id/monitor`, `GET /api/health/swarm`, `GET /api/health/alerts`, `POST /api/health/alerts/:id/acknowledge`, `GET /api/health/reports/daily`, `GET /api/health/reports/weekly`, etc.
+- **Database** — `health_alerts` table with 7 indexes for efficient querying
+
 ### Added — Phase 2.3 (carried forward)
 - Post Job Processor, Media Uploader, Enhanced Post Controller (7 endpoints), batch posting, pagination
 
 ### Changed
-- `src/index.ts` — mounted `/api/variations` and `/api/distribution` routes
+- `src/index.ts` — mounted `/api/variations`, `/api/distribution`, `/api/groups`, and `/api/health` routes
 - PostController supports both synchronous and queue-based posting
+- Auto-monitoring scheduler starts on server boot
 
 ### In Progress
-- Phase 6: Account Groups
-- Phase 7: Health Monitoring
-- Frontend integration for variation + distribution APIs
+- Phase 8: Proxy Management
+- Phase 9: Advanced Scheduling
+- Frontend integration for variation + distribution + groups + health APIs
 
 ---
 

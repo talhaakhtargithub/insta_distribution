@@ -265,6 +265,38 @@ CREATE INDEX idx_health_account_id ON account_health_scores(account_id);
 CREATE INDEX idx_health_overall_score ON account_health_scores(overall_score);
 
 -- ============================================
+-- HEALTH ALERTS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS health_alerts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  account_id UUID REFERENCES accounts(id) ON DELETE CASCADE,
+  user_id VARCHAR(255) NOT NULL,
+
+  -- Alert details
+  alert_type VARCHAR(50) NOT NULL,
+  severity VARCHAR(20) NOT NULL CHECK (severity IN ('info', 'warning', 'error', 'critical')),
+  message TEXT NOT NULL,
+  metadata JSONB,
+
+  -- Status
+  acknowledged BOOLEAN DEFAULT FALSE,
+  resolved BOOLEAN DEFAULT FALSE,
+
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT NOW(),
+  acknowledged_at TIMESTAMP,
+  resolved_at TIMESTAMP
+);
+
+CREATE INDEX idx_alerts_account_id ON health_alerts(account_id);
+CREATE INDEX idx_alerts_user_id ON health_alerts(user_id);
+CREATE INDEX idx_alerts_type ON health_alerts(alert_type);
+CREATE INDEX idx_alerts_severity ON health_alerts(severity);
+CREATE INDEX idx_alerts_created_at ON health_alerts(created_at);
+CREATE INDEX idx_alerts_acknowledged ON health_alerts(acknowledged);
+CREATE INDEX idx_alerts_resolved ON health_alerts(resolved);
+
+-- ============================================
 -- QUEUES TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS queues (
@@ -358,5 +390,6 @@ COMMENT ON TABLE warmup_tasks IS 'Automated warmup tasks for new accounts';
 COMMENT ON TABLE scheduled_posts IS 'Scheduled Instagram posts across accounts';
 COMMENT ON TABLE content_variations IS 'Pre-generated content variations per account';
 COMMENT ON TABLE account_health_scores IS 'Real-time health monitoring for accounts';
+COMMENT ON TABLE health_alerts IS 'Health alerts and notifications for account issues';
 COMMENT ON TABLE queues IS 'Posting queues for automated scheduling';
 COMMENT ON TABLE post_results IS 'Log of all posting attempts and results';

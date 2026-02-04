@@ -13,7 +13,9 @@ import warmupRouter from './api/routes/warmup.routes';
 import variationsRouter from './api/routes/variations.routes';
 import distributionRouter from './api/routes/distribution.routes';
 import groupsRouter from './api/routes/groups.routes';
+import healthRouter from './api/routes/health.routes';
 import { startWarmupScheduler } from './jobs/WarmupJob';
+import { scheduleAutoMonitoring } from './jobs/HealthMonitorJob';
 
 const app = express();
 const PORT = envConfig.PORT;
@@ -132,6 +134,9 @@ app.use('/api/distribution', distributionRouter);
 // Groups routes
 app.use('/api/groups', groupsRouter);
 
+// Health monitoring routes
+app.use('/api/health', healthRouter);
+
 // Future routes (commented for now)
 // app.use('/api/schedules', schedulesRouter);
 // app.use('/api/swarm', swarmRouter);
@@ -184,6 +189,10 @@ const server = app.listen(PORT, () => {
   logger.info('🔄 Starting background job schedulers...');
   startWarmupScheduler();
   logger.info('✓ Warmup scheduler started (checks every 5 minutes)');
+
+  // Start health monitoring scheduler
+  scheduleAutoMonitoring();
+  logger.info('✓ Health monitoring scheduler started (checks every 6 hours)');
 });
 
 // Graceful shutdown
