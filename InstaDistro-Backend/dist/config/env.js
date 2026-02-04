@@ -24,6 +24,8 @@ class EnvConfig {
     REDIS_HOST;
     REDIS_PORT;
     REDIS_PASSWORD;
+    REDIS_DB;
+    REDIS_URL;
     // JWT
     JWT_SECRET;
     JWT_EXPIRY;
@@ -46,6 +48,8 @@ class EnvConfig {
         this.REDIS_HOST = this.getEnv('REDIS_HOST', 'localhost');
         this.REDIS_PORT = parseInt(this.getEnv('REDIS_PORT', '6379'));
         this.REDIS_PASSWORD = process.env.REDIS_PASSWORD;
+        this.REDIS_DB = parseInt(this.getEnv('REDIS_DB', '0'));
+        this.REDIS_URL = process.env.REDIS_URL;
         // JWT
         this.JWT_SECRET = this.getEnv('JWT_SECRET', this.generateDevSecret());
         this.JWT_EXPIRY = this.getEnv('JWT_EXPIRY', '24h');

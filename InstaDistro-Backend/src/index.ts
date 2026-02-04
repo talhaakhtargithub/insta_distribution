@@ -9,6 +9,8 @@ import { securityHeaders, corsOptions, sanitizeInput } from './api/middlewares/s
 import accountsRouter from './api/routes/accounts.routes';
 import postsRouter from './api/routes/posts.routes';
 import oauthRouter from './api/routes/oauth.routes';
+import warmupRouter from './api/routes/warmup.routes';
+import { startWarmupScheduler } from './jobs/WarmupJob';
 
 const app = express();
 const PORT = envConfig.PORT;
@@ -76,6 +78,17 @@ app.get('/', (_req: Request, res: Response) => {
         bulkImport: 'POST /api/accounts/bulk-import - Bulk import accounts',
         stats: 'GET /api/accounts/stats/swarm - Get swarm statistics',
       },
+      warmup: {
+        protocol: 'GET /api/warmup/protocol - Get 14-day warmup protocol',
+        start: 'POST /api/warmup/start/:accountId - Start warmup for account',
+        progress: 'GET /api/warmup/progress/:accountId - Get warmup progress',
+        tasks: 'GET /api/warmup/tasks/:accountId/:day - Get tasks for specific day',
+        pause: 'POST /api/warmup/pause/:accountId - Pause warmup',
+        resume: 'POST /api/warmup/resume/:accountId - Resume warmup',
+        skipToActive: 'POST /api/warmup/skip-to-active/:accountId - Skip warmup (risky)',
+        accounts: 'GET /api/warmup/accounts - Get all accounts in warmup',
+        stats: 'GET /api/warmup/stats - Get warmup statistics',
+      },
       rateLimits: {
         general: '100 requests per 15 minutes',
         accountCreation: '10 requests per hour',
@@ -104,10 +117,12 @@ app.use('/api/posts', postsRouter);
 // OAuth routes (Instagram, Google, etc.)
 app.use('/api/auth', oauthRouter);
 
+// Warmup routes
+app.use('/api/warmup', warmupRouter);
+
 // Future routes (commented for now)
 // app.use('/api/schedules', schedulesRouter);
 // app.use('/api/swarm', swarmRouter);
-// app.use('/api/warmup', warmupRouter);
 // app.use('/api/proxies', proxiesRouter);
 
 // 404 handler
@@ -152,6 +167,11 @@ const server = app.listen(PORT, () => {
   logger.info(`🌍 Environment: ${envConfig.NODE_ENV}`);
   logger.info(`🗄️  Database: ${envConfig.DB_NAME}@${envConfig.DB_HOST}:${envConfig.DB_PORT}`);
   logger.info(`✓ Ready to accept requests`);
+
+  // Start background job schedulers
+  logger.info('🔄 Starting background job schedulers...');
+  startWarmupScheduler();
+  logger.info('✓ Warmup scheduler started (checks every 5 minutes)');
 });
 
 // Graceful shutdown

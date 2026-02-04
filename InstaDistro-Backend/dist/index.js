@@ -14,6 +14,8 @@ const security_middleware_1 = require("./api/middlewares/security.middleware");
 const accounts_routes_1 = __importDefault(require("./api/routes/accounts.routes"));
 const posts_routes_1 = __importDefault(require("./api/routes/posts.routes"));
 const oauth_routes_1 = __importDefault(require("./api/routes/oauth.routes"));
+const warmup_routes_1 = __importDefault(require("./api/routes/warmup.routes"));
+const WarmupJob_1 = require("./jobs/WarmupJob");
 const app = (0, express_1.default)();
 const PORT = env_1.envConfig.PORT;
 // Trust proxy (for rate limiting behind reverse proxy)
@@ -72,6 +74,17 @@ app.get('/', (_req, res) => {
                 bulkImport: 'POST /api/accounts/bulk-import - Bulk import accounts',
                 stats: 'GET /api/accounts/stats/swarm - Get swarm statistics',
             },
+            warmup: {
+                protocol: 'GET /api/warmup/protocol - Get 14-day warmup protocol',
+                start: 'POST /api/warmup/start/:accountId - Start warmup for account',
+                progress: 'GET /api/warmup/progress/:accountId - Get warmup progress',
+                tasks: 'GET /api/warmup/tasks/:accountId/:day - Get tasks for specific day',
+                pause: 'POST /api/warmup/pause/:accountId - Pause warmup',
+                resume: 'POST /api/warmup/resume/:accountId - Resume warmup',
+                skipToActive: 'POST /api/warmup/skip-to-active/:accountId - Skip warmup (risky)',
+                accounts: 'GET /api/warmup/accounts - Get all accounts in warmup',
+                stats: 'GET /api/warmup/stats - Get warmup statistics',
+            },
             rateLimits: {
                 general: '100 requests per 15 minutes',
                 accountCreation: '10 requests per hour',
@@ -95,10 +108,11 @@ app.post('/api/accounts/bulk-import', rateLimit_middleware_1.bulkImportLimiter);
 app.use('/api/posts', posts_routes_1.default);
 // OAuth routes (Instagram, Google, etc.)
 app.use('/api/auth', oauth_routes_1.default);
+// Warmup routes
+app.use('/api/warmup', warmup_routes_1.default);
 // Future routes (commented for now)
 // app.use('/api/schedules', schedulesRouter);
 // app.use('/api/swarm', swarmRouter);
-// app.use('/api/warmup', warmupRouter);
 // app.use('/api/proxies', proxiesRouter);
 // 404 handler
 app.use((_req, res) => {
@@ -138,6 +152,10 @@ const server = app.listen(PORT, () => {
     logger_1.logger.info(`🌍 Environment: ${env_1.envConfig.NODE_ENV}`);
     logger_1.logger.info(`🗄️  Database: ${env_1.envConfig.DB_NAME}@${env_1.envConfig.DB_HOST}:${env_1.envConfig.DB_PORT}`);
     logger_1.logger.info(`✓ Ready to accept requests`);
+    // Start background job schedulers
+    logger_1.logger.info('🔄 Starting background job schedulers...');
+    (0, WarmupJob_1.startWarmupScheduler)();
+    logger_1.logger.info('✓ Warmup scheduler started (checks every 5 minutes)');
 });
 // Graceful shutdown
 const gracefulShutdown = async (signal) => {
