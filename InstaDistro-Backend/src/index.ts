@@ -5,7 +5,7 @@ import { pool, closePool } from './config/database';
 import { envConfig } from './config/env';
 import { logger, requestLogger } from './config/logger';
 import { apiLimiter, createAccountLimiter, bulkImportLimiter } from './api/middlewares/rateLimit.middleware';
-import { securityHeaders, corsOptions, sanitizeInput } from './api/middlewares/security.middleware';
+import { securityHeaders, corsOptions, sanitizeInput, validateInput } from './api/middlewares/security.middleware';
 import { requestIdMiddleware } from './api/middlewares/requestId.middleware';
 import accountsRouter from './api/routes/accounts.routes';
 import postsRouter from './api/routes/posts.routes';
@@ -45,8 +45,14 @@ app.use(compression());
 // Request sanitization
 app.use(sanitizeInput);
 
+// Input validation
+app.use(validateInput);
+
 // Request logging
 app.use(requestLogger);
+
+// Serve static files (security.txt, etc.)
+app.use('/.well-known', express.static('public/.well-known'));
 
 // Health check endpoint (no rate limiting)
 app.get('/health', async (_req: Request, res: Response) => {

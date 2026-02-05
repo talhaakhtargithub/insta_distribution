@@ -1,0 +1,49 @@
+Contact: security@instadistro.example.com
+Expires: 2027-12-31T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://api.instadistro.example.com/.well-known/security.txt
+
+# Security Policy
+
+Thank you for helping us keep InstaDistro and our users safe!
+
+## Reporting a Vulnerability
+
+If you discover a security vulnerability, please report it to us at:
+- Email: security@instadistro.example.com
+
+Please include:
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact
+- Suggested fix (if any)
+
+## Response Time
+
+We aim to:
+- Acknowledge receipt within 48 hours
+- Provide an initial assessment within 7 days
+- Keep you informed of our progress
+
+## Disclosure Policy
+
+- Please allow us reasonable time to fix the issue before public disclosure
+- We will credit security researchers (unless you prefer to remain anonymous)
+- We follow responsible disclosure principles
+
+## Out of Scope
+
+The following are generally out of scope:
+- Denial of Service attacks
+- Social engineering of staff or contractors
+- Physical attacks against InstaDistro property or data centers
+- Reports from automated tools without validation
+
+## Safe Harbor
+
+We support safe harbor for security researchers who:
+- Make a good faith effort to avoid privacy violations and data destruction
+- Only interact with accounts you own or with explicit permission
+- Do not exploit a vulnerability beyond what is necessary to demonstrate it
+
+Thank you for helping us maintain the security of InstaDistro!
