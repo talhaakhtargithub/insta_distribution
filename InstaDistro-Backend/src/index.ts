@@ -22,6 +22,8 @@ import { scheduleAutoMonitoring } from './jobs/HealthMonitorJob';
 import { scheduleProxyHealthChecks } from './jobs/ProxyJob';
 import { startScheduleProcessor } from './jobs/ScheduleJob';
 import { performanceMiddleware } from './utils/performance';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerDocument } from './config/swagger';
 
 const app = express();
 const PORT = envConfig.PORT;
@@ -58,27 +60,131 @@ app.use(requestLogger);
 // Serve static files (security.txt, etc.)
 app.use('/.well-known', express.static('public/.well-known'));
 
-// Health check endpoint (no rate limiting)
+// API Documentation (Swagger UI) - Phase 9
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'InstaDistro API Documentation',
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    filter: true,
+  },
+}));
+
+// Serve OpenAPI spec as JSON
+app.get('/api/docs/openapi.json', (_req: Request, res: Response) => {
+  res.json(swaggerDocument);
+});
+
+// Health check endpoint (no rate limiting) - Enhanced in Phase 9
 app.get('/health', async (_req: Request, res: Response) => {
   try {
     // Test database connection
     const dbResult = await pool.query('SELECT NOW()');
     const dbConnected = dbResult.rows.length > 0;
 
+    // Memory usage
+    const memoryUsage = process.memoryUsage();
+    const formatBytes = (bytes: number) => Math.round(bytes / 1024 / 1024 * 100) / 100;
+
     res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
-      database: dbConnected ? 'connected' : 'disconnected',
-      uptime: process.uptime(),
-      environment: envConfig.NODE_ENV,
       version: '1.0.0',
+      environment: envConfig.NODE_ENV,
+      uptime: {
+        seconds: Math.floor(process.uptime()),
+        formatted: formatUptime(process.uptime()),
+      },
+      services: {
+        database: dbConnected ? 'connected' : 'disconnected',
+        api: 'running',
+      },
+      memory: {
+        heapUsed: `${formatBytes(memoryUsage.heapUsed)} MB`,
+        heapTotal: `${formatBytes(memoryUsage.heapTotal)} MB`,
+        rss: `${formatBytes(memoryUsage.rss)} MB`,
+        external: `${formatBytes(memoryUsage.external)} MB`,
+      },
+      documentation: '/api/docs',
     });
   } catch (error) {
     logger.error('Health check failed', { error });
     res.status(500).json({
       status: 'error',
-      database: 'disconnected',
+      timestamp: new Date().toISOString(),
+      services: {
+        database: 'disconnected',
+        api: 'running',
+      },
       error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// Helper function to format uptime
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  parts.push(`${secs}s`);
+
+  return parts.join(' ');
+}
+
+// API Metrics endpoint - Phase 9
+app.get('/api/metrics', async (_req: Request, res: Response) => {
+  try {
+    // Get database stats
+    const dbStats = await pool.query(`
+      SELECT
+        (SELECT count(*) FROM accounts) as total_accounts,
+        (SELECT count(*) FROM accounts WHERE account_state = 'ACTIVE') as active_accounts,
+        (SELECT count(*) FROM accounts WHERE account_state = 'WARMING_UP') as warming_up_accounts,
+        (SELECT count(*) FROM warmup_tasks WHERE status = 'pending') as pending_warmup_tasks,
+        (SELECT count(*) FROM post_results WHERE created_at > NOW() - INTERVAL '24 hours') as posts_last_24h
+    `);
+
+    const stats = dbStats.rows[0] || {};
+    const memoryUsage = process.memoryUsage();
+
+    res.json({
+      timestamp: new Date().toISOString(),
+      system: {
+        uptime: process.uptime(),
+        nodeVersion: process.version,
+        platform: process.platform,
+        memoryUsage: {
+          heapUsedMB: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+          heapTotalMB: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+          rssMB: Math.round(memoryUsage.rss / 1024 / 1024),
+        },
+      },
+      accounts: {
+        total: parseInt(stats.total_accounts) || 0,
+        active: parseInt(stats.active_accounts) || 0,
+        warmingUp: parseInt(stats.warming_up_accounts) || 0,
+      },
+      activity: {
+        pendingWarmupTasks: parseInt(stats.pending_warmup_tasks) || 0,
+        postsLast24h: parseInt(stats.posts_last_24h) || 0,
+      },
+      performance: {
+        targetResponseTime: 'P95 < 200ms',
+        cacheHitRateTarget: '> 80%',
+      },
+    });
+  } catch (error) {
+    logger.error('Metrics endpoint error', { error });
+    res.status(500).json({
+      error: 'Failed to fetch metrics',
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
