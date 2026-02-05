@@ -21,6 +21,7 @@ import { startWarmupScheduler } from './jobs/WarmupJob';
 import { scheduleAutoMonitoring } from './jobs/HealthMonitorJob';
 import { scheduleProxyHealthChecks } from './jobs/ProxyJob';
 import { startScheduleProcessor } from './jobs/ScheduleJob';
+import { performanceMiddleware } from './utils/performance';
 
 const app = express();
 const PORT = envConfig.PORT;
@@ -34,6 +35,9 @@ app.use(cors(corsOptions));
 
 // Request ID middleware (must be early so all logs include request ID)
 app.use(requestIdMiddleware);
+
+// Performance monitoring middleware
+app.use(performanceMiddleware);
 
 // Body parsing middleware
 app.use(express.json({ limit: '50mb' }));

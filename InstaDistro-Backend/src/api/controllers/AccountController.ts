@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import { accountService } from '../../services/swarm/AccountService';
 import { authService } from '../../services/instagram/AuthService';
 import { logger } from '../../config/logger';
+import { cacheService, CacheTTL, CacheNamespace } from '../../services/cache/CacheService';
+import { parseCursorPaginationParams, createCursorPaginatedResponse } from '../../utils/pagination';
+import { PerformanceTracker } from '../../utils/performance';
 
 export class AccountController {
   /**
@@ -39,6 +42,9 @@ export class AccountController {
         proxy_id: proxyId,
       });
 
+      // Invalidate user's account caches
+      await cacheService.invalidateUser(userId);
+
       // Remove encrypted password from response
       const { encrypted_password, ...accountData } = account;
 
@@ -58,8 +64,11 @@ export class AccountController {
   /**
    * GET /api/accounts
    * Get all accounts for the authenticated user
+   * Supports cursor-based pagination and caching
    */
   async getAccounts(req: Request, res: Response) {
+    const tracker = new PerformanceTracker();
+
     try {
       // Get user ID from JWT (placeholder)
       const userId = req.headers['x-user-id'] as string || 'user_1';
@@ -67,20 +76,51 @@ export class AccountController {
       // Optional filter by state
       const state = req.query.state as string;
 
+      // Parse pagination params
+      const { cursor, limit } = parseCursorPaginationParams(req.query);
+      tracker.checkpoint('params-parsed');
+
+      // Build cache key
+      const cacheKey = cacheService.key(
+        state ? CacheNamespace.ACCOUNTS_LIST : CacheNamespace.ACCOUNTS_LIST,
+        userId,
+        state || 'all',
+        cursor || 'initial',
+        limit.toString()
+      );
+
+      // Try to get from cache
+      const cached = await cacheService.get<any>(cacheKey);
+      if (cached) {
+        tracker.checkpoint('cache-hit');
+        tracker.logSummary('GET /api/accounts [cached]');
+        return res.json(cached);
+      }
+
+      tracker.checkpoint('cache-miss');
+
+      // Fetch from database
       let accounts;
       if (state) {
         accounts = await accountService.getAccountsByState(userId, state);
       } else {
         accounts = await accountService.getAccountsByUserId(userId);
       }
+      tracker.checkpoint('accounts-fetched');
 
       // Remove encrypted passwords from response
       const accountsData = accounts.map(({ encrypted_password, ...account }) => account);
 
-      res.json({
-        count: accountsData.length,
-        accounts: accountsData,
-      });
+      // Create paginated response
+      const response = createCursorPaginatedResponse(accountsData as any[], limit);
+      tracker.checkpoint('response-created');
+
+      // Cache the response
+      await cacheService.set(cacheKey, response, CacheTTL.MEDIUM);
+      tracker.checkpoint('response-cached');
+
+      tracker.logSummary('GET /api/accounts');
+      res.json(response);
     } catch (error: any) {
       logger.error('Get accounts error', { error: error.message, stack: error.stack });
       res.status(500).json({
@@ -131,6 +171,9 @@ export class AccountController {
 
       const account = await accountService.updateAccount(id, updates);
 
+      // Invalidate account-specific caches
+      await cacheService.invalidateAccount(id);
+
       // Remove encrypted password from response
       const { encrypted_password, ...accountData } = account;
 
@@ -156,6 +199,9 @@ export class AccountController {
       const { id } = req.params;
 
       await accountService.deleteAccount(id);
+
+      // Invalidate account-specific caches
+      await cacheService.invalidateAccount(id);
 
       res.json({
         message: 'Account deleted successfully',
@@ -189,6 +235,11 @@ export class AccountController {
 
       const result = await accountService.bulkImport(userId, accounts);
 
+      // Invalidate user's account caches after bulk import
+      if (result.success.length > 0) {
+        await cacheService.invalidateUser(userId);
+      }
+
       res.json({
         message: 'Bulk import completed',
         imported: result.success.length,
@@ -208,18 +259,30 @@ export class AccountController {
   /**
    * GET /api/accounts/stats/swarm
    * Get swarm dashboard statistics
+   * Cached for performance
    */
   async getSwarmStats(req: Request, res: Response) {
+    const tracker = new PerformanceTracker();
+
     try {
       // Get user ID from JWT (placeholder)
       const userId = req.headers['x-user-id'] as string || 'user_1';
 
-      const stats = await accountService.getSwarmStats(userId);
+      // Use cache-aside pattern with getOrSet
+      const stats = await cacheService.getOrSet(
+        cacheService.key(CacheNamespace.HEALTH_SWARM, userId),
+        async () => await accountService.getSwarmStats(userId),
+        CacheTTL.SHORT // 5 minutes - stats can be slightly stale
+      );
+      tracker.checkpoint('stats-fetched');
 
-      res.json({
+      const response = {
         stats,
         timestamp: new Date().toISOString(),
-      });
+      };
+
+      tracker.logSummary('GET /api/accounts/stats/swarm');
+      res.json(response);
     } catch (error: any) {
       logger.error('Get swarm stats error', { error: error.message, stack: error.stack });
       res.status(500).json({

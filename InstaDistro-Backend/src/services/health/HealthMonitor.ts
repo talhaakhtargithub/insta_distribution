@@ -3,6 +3,7 @@ import MetricsCollector, { AccountMetrics, SwarmMetrics } from './MetricsCollect
 import HealthScorer, { HealthScoreBreakdown } from './HealthScorer';
 import AlertManager, { Alert } from './AlertManager';
 import { logger } from '../../config/logger';
+import { cacheService, CacheTTL, CacheNamespace } from '../cache/CacheService';
 
 // ============================================
 // TYPES
@@ -68,8 +69,18 @@ export class HealthMonitor {
 
   /**
    * Monitor a single account and generate health report
+   * Cached for 5 minutes to reduce database load
    */
   async monitorAccount(accountId: string): Promise<HealthReport> {
+    // Try to get from cache first
+    const cacheKey = cacheService.key(CacheNamespace.HEALTH, accountId);
+    const cached = await cacheService.get<HealthReport>(cacheKey);
+
+    if (cached) {
+      logger.debug('Health report cache hit', { accountId });
+      return cached;
+    }
+
     const client = await pool.connect();
 
     try {
@@ -106,7 +117,7 @@ export class HealthMonitor {
       // Update health score in database
       await this.updateHealthScore(accountId, scoreBreakdown, metrics, flags, recommendations);
 
-      return {
+      const report: HealthReport = {
         accountId,
         username,
         metrics,
@@ -117,6 +128,11 @@ export class HealthMonitor {
         lastUpdated: new Date()
       };
 
+      // Cache the report
+      await cacheService.set(cacheKey, report, CacheTTL.SHORT);
+
+      return report;
+
     } finally {
       client.release();
     }
@@ -124,8 +140,18 @@ export class HealthMonitor {
 
   /**
    * Monitor all accounts for a user and generate swarm health report
+   * Cached for 5 minutes to reduce load
    */
   async monitorSwarm(userId: string): Promise<SwarmHealthReport> {
+    // Try to get from cache first
+    const cacheKey = cacheService.key(CacheNamespace.HEALTH_SWARM, userId);
+    const cached = await cacheService.get<SwarmHealthReport>(cacheKey);
+
+    if (cached) {
+      logger.debug('Swarm health report cache hit', { userId });
+      return cached;
+    }
+
     const client = await pool.connect();
 
     try {
@@ -177,7 +203,7 @@ export class HealthMonitor {
       // Generate summary
       const summary = this.generateSwarmSummary(swarmMetrics, avgScore, criticalCount, healthyCount, activeAlerts.length);
 
-      return {
+      const report: SwarmHealthReport = {
         userId,
         swarmMetrics,
         accountReports,
@@ -191,6 +217,11 @@ export class HealthMonitor {
         summary,
         generatedAt: new Date()
       };
+
+      // Cache the report
+      await cacheService.set(cacheKey, report, CacheTTL.SHORT);
+
+      return report;
 
     } finally {
       client.release();

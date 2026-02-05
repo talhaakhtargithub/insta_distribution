@@ -4,6 +4,7 @@ import { accountService } from '../services/swarm/AccountService';
 import { pool } from '../config/database';
 import { logger } from '../config/logger';
 import { envConfig } from '../config/env';
+import { JobType, getJobOptionsByType, jobMonitor } from '../utils/jobQueue';
 
 /**
  * Post Job Processor
@@ -59,16 +60,8 @@ const postQueue = new Queue<PostJobData>('instagram-posts', {
         host: envConfig.REDIS_HOST || 'localhost',
         port: envConfig.REDIS_PORT || 6379,
     },
-    defaultJobOptions: {
-        attempts: 3,
-        backoff: {
-            type: 'exponential',
-            delay: 30000, // 30 seconds initial delay
-        },
-        removeOnComplete: 100,
-        removeOnFail: 500,
-        timeout: 5 * 60 * 1000, // 5 minute timeout
-    },
+    // Use job-specific options from jobQueue utils instead of defaults
+    defaultJobOptions: getJobOptionsByType(JobType.POST_PUBLISH),
 });
 
 // ============================================
@@ -77,6 +70,9 @@ const postQueue = new Queue<PostJobData>('instagram-posts', {
 
 postQueue.process(async (job: Job<PostJobData>) => {
     const { userId, accountId, mediaPath, mediaType, caption, hashtags, coverImagePath, distributionId } = job.data;
+
+    // Record job started
+    jobMonitor.recordJobStarted(JobType.POST_PUBLISH);
 
     logger.info(`Processing post job ${job.id} for account ${accountId}`, {
         mediaType,
@@ -135,6 +131,13 @@ postQueue.process(async (job: Job<PostJobData>) => {
             accountId,
         });
 
+        // Record job completed
+        if (result.success) {
+            jobMonitor.recordJobComplete(JobType.POST_PUBLISH);
+        } else {
+            jobMonitor.recordJobFailed(JobType.POST_PUBLISH);
+        }
+
         return postResult;
     } catch (error: any) {
         logger.error(`Post job ${job.id} failed`, {
@@ -155,6 +158,9 @@ postQueue.process(async (job: Job<PostJobData>) => {
         };
 
         await recordPostResult(userId, accountId, failResult, job.data);
+
+        // Record job failed
+        jobMonitor.recordJobFailed(JobType.POST_PUBLISH);
 
         // Determine if we should retry
         if (!isRetryableError(error)) {
