@@ -68,11 +68,39 @@ exports.authMiddleware = authMiddleware;
  */
 const optionalAuthMiddleware = (req, res, next) => {
     try {
-        // TODO: Same as above, but don't reject if token missing
+        // Extract token from Authorization header
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            // No token provided - continue without authentication
+            return next();
+        }
+        // Check if it's a Bearer token
+        if (!authHeader.startsWith('Bearer ')) {
+            // Invalid format - continue without authentication
+            return next();
+        }
+        // Extract token
+        const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+        try {
+            // Verify token
+            const payload = JwtService_1.jwtService.verifyAccessToken(token);
+            // Attach user info to request
+            req.user = {
+                userId: payload.userId,
+                email: payload.email,
+                name: payload.name,
+                picture: payload.picture,
+                provider: payload.provider,
+            };
+        }
+        catch (error) {
+            // Token invalid/expired - continue without authentication
+            logger_1.logger.debug('Optional auth: Invalid token provided', { error });
+        }
         next();
     }
     catch (error) {
-        // Just continue without user
+        // Just continue without user on any error
         next();
     }
 };

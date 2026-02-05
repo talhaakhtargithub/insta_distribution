@@ -1,0 +1,343 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for services/variation/HashtagGenerator.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">services/variation</a> HashtagGenerator.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>0/50</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/17</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/9</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>0/41</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { logger } from '../../config/logger';
+<span class="cstat-no" title="statement not covered" >import { HashtagVariationSettings, randomIntInRange } from '../../config/variations';</span>
+&nbsp;
+const POPULAR: string[] = <span class="cstat-no" title="statement not covered" >[</span>
+  'viral','trending','explore','fyp','instagood','love','life','ootd','style','fashion',
+  'fitness','travel','food','beauty','art','music','motivation','success','happy','fun',
+  'friends','adventure','nature','photography',
+];
+const MEDIUM: string[] = <span class="cstat-no" title="statement not covered" >[</span>
+  'contentcreator','dailylife','reels','hustlehard','creativelife','mindset','selfcare',
+  'wellness','positivity','entrepreneur','lifestyle','inspiration','authentic','community',
+  'creativity','storytelling','passion','journey','goals','gratitude','growth','vibes',
+];
+const NICHE: Record&lt;string, string[]&gt; = <span class="cstat-no" title="statement not covered" >{</span>
+  fitness:  ['homeworkout','fitnessmotivation','gymlife','workoutdaily','healthylife','strongbody','cardio'],
+  food:     ['mealprep','homecooking','foodlover','recipesofinstagram','organicfood','foodblogger'],
+  fashion:  ['ootdfashion','streetwear','fashioninspo','casualstyle','outfitideas','wardrobe'],
+  travel:   ['wanderlust','travelgram','roadtrip','backpacking','exploretheworld','solotravel'],
+  tech:     ['techlife','coding','developer','startup','innovation','ai','techblogger','devlife'],
+  art:      ['digitalart','artofinstagram','creativeprocess','artistlife','artdaily','artcommunity'],
+  music:    ['musiclover','musicproduction','producer','beatmaking','songwriter','musiclife'],
+  business: ['entrepreneurlife','smallbusiness','businessgrowth','startuplife','hustleculture'],
+  default:  ['content','creative','daily','moments','aesthetic','reallife','authentic','goodvibes'],
+};
+const TIME_TAGS: Record&lt;string, string[]&gt; = <span class="cstat-no" title="statement not covered" >{</span>
+  morning: ['morningvibes','morningroutine','goodmorning'],
+  afternoon: ['afternoonvibes','midday','lunchtime'],
+  evening: ['eveningvibes','sunset','goldenhour'],
+  night: ['nightvibes','nighttime','latenight'],
+};
+&nbsp;
+<span class="cstat-no" title="statement not covered" >export class H</span>ashtagGenerator {
+  private settings: HashtagVariationSettings;
+<span class="fstat-no" title="function not covered" >  constructor(s</span>ettings?: Partial&lt;HashtagVariationSettings&gt;) {
+<span class="cstat-no" title="statement not covered" >    this.settings = { minCount: 5, maxCount: 15, popularRatio: 0.4, rotationSize: 50, ...settings };</span>
+  }
+<span class="fstat-no" title="function not covered" >  createHashtagVariation(</span>baseHashtags?: string[], niche: string = <span class="branch-0 cbranch-no" title="branch not covered" >'default',</span> accountId?: string): string[] {
+    const count = <span class="cstat-no" title="statement not covered" >randomIntInRange(this.settings.minCount, this.settings.maxCount);</span>
+    const popCount = <span class="cstat-no" title="statement not covered" >Math.round(count * this.settings.popularRatio);</span>
+    const nicheCount = <span class="cstat-no" title="statement not covered" >count - popCount;</span>
+    const tags: string[] = <span class="cstat-no" title="statement not covered" >[];</span>
+<span class="cstat-no" title="statement not covered" >    tags.push(...this.shuffle(POPULAR).slice(0, popCount));</span>
+    const nichePool = <span class="cstat-no" title="statement not covered" >[...(NICHE[niche] || NICHE.default), ...MEDIUM];</span>
+<span class="cstat-no" title="statement not covered" >    tags.push(...this.shuffle(nichePool).slice(0, nicheCount));</span>
+    const period = <span class="cstat-no" title="statement not covered" >this.currentPeriod();</span>
+    const tt = <span class="cstat-no" title="statement not covered" >TIME_TAGS[period];</span>
+<span class="cstat-no" title="statement not covered" >    tags.push(tt[Math.floor(Math.random() * tt.length)]);</span>
+<span class="cstat-no" title="statement not covered" >    if (baseHashtags) {</span>
+<span class="cstat-no" title="statement not covered" >      for (const tag of baseHashtags) {</span>
+        const clean = <span class="cstat-no" title="statement not covered" >tag.replace(/^#/, '').toLowerCase();</span>
+<span class="cstat-no" title="statement not covered" >        if (!tags.includes(clean)) <span class="cstat-no" title="statement not covered" >tags.push(clean);</span></span>
+      }
+    }
+    const unique = <span class="cstat-no" title="statement not covered" >[...new Set(tags.map(<span class="fstat-no" title="function not covered" >(t</span>) =&gt; <span class="cstat-no" title="statement not covered" >t.toLowerCase().replace(/[^a-z0-9]/g, ''))</span>)];</span>
+    const rotated = <span class="cstat-no" title="statement not covered" >accountId ? this.rotate(unique, accountId) : unique;</span>
+<span class="cstat-no" title="statement not covered" >    return rotated.slice(0, this.settings.maxCount).map(<span class="fstat-no" title="function not covered" >(t</span>) =&gt; <span class="cstat-no" title="statement not covered" >'#' + t)</span>;</span>
+  }
+<span class="fstat-no" title="function not covered" >  rotateHashtags(</span>accountId: string, tags: string[]): string[] {
+<span class="cstat-no" title="statement not covered" >    return tags.length === 0 ? tags : this.rotate(tags, accountId);</span>
+  }
+  private <span class="fstat-no" title="function not covered" >currentPeriod(</span>): keyof typeof TIME_TAGS {
+    const h = <span class="cstat-no" title="statement not covered" >new Date().getHours();</span>
+<span class="cstat-no" title="statement not covered" >    if (h &lt; 12) <span class="cstat-no" title="statement not covered" >return 'morning';</span></span>
+<span class="cstat-no" title="statement not covered" >    if (h &lt; 17) <span class="cstat-no" title="statement not covered" >return 'afternoon';</span></span>
+<span class="cstat-no" title="statement not covered" >    if (h &lt; 21) <span class="cstat-no" title="statement not covered" >return 'evening';</span></span>
+<span class="cstat-no" title="statement not covered" >    return 'night';</span>
+  }
+  private <span class="fstat-no" title="function not covered" >rotate&lt;</span>T&gt;(arr: T[], seed: string): T[] {
+    const offset = <span class="cstat-no" title="statement not covered" >this.hash(seed) % arr.length;</span>
+<span class="cstat-no" title="statement not covered" >    return [...arr.slice(offset), ...arr.slice(0, offset)];</span>
+  }
+  private <span class="fstat-no" title="function not covered" >shuffle&lt;</span>T&gt;(arr: T[]): T[] {
+    const out = <span class="cstat-no" title="statement not covered" >[...arr];</span>
+<span class="cstat-no" title="statement not covered" >    for (let i = <span class="cstat-no" title="statement not covered" >out.length - 1;</span> i &gt; 0; i--) {</span>
+      const j = <span class="cstat-no" title="statement not covered" >Math.floor(Math.random() * (i + 1));</span>
+<span class="cstat-no" title="statement not covered" >      [out[i], out[j]] = [out[j], out[i]];</span>
+    }
+<span class="cstat-no" title="statement not covered" >    return out;</span>
+  }
+  private <span class="fstat-no" title="function not covered" >hash(</span>str: string): number {
+    let h = <span class="cstat-no" title="statement not covered" >5381;</span>
+<span class="cstat-no" title="statement not covered" >    for (let i = <span class="cstat-no" title="statement not covered" >0;</span> i &lt; str.length; i++) <span class="cstat-no" title="statement not covered" >h = ((h &lt;&lt; 5) + h + str.charCodeAt(i)) | 0;</span></span>
+<span class="cstat-no" title="statement not covered" >    return Math.abs(h);</span>
+  }
+}
+export const <span class="cstat-no" title="statement not covered" >hashtagGenerator = new HashtagGenerator();</span>
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-02-05T21:08:40.597Z
+            </div>
+        <script src="../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../sorter.js"></script>
+        <script src="../../block-navigation.js"></script>
+    </body>
+</html>
+    

@@ -13,7 +13,18 @@
       "Bash(./node_modules/.bin/tsc:*)",
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nPhase 1.5: Replace console.log with structured logging\n\nLOGGING IMPROVEMENTS:\n- Replace all console.log/error/warn with logger calls across codebase\n- Add proper context objects to error logging for better debugging\n- Use appropriate log levels \\(info, debug, warn, error\\)\n\nCHANGES:\n- services/swarm/AccountService.ts: 9 console.error → logger.error with context\n- jobs/HealthMonitorJob.ts: 20 console statements → logger.info/error\n- jobs/ScheduleJob.ts: 8 console statements → logger.info/error\n- jobs/ProxyJob.ts: 12 console statements → logger.info/error\n- services/health/AlertManager.ts: 6 console statements → logger.debug/info/error\n- services/auth/EncryptionService.ts: 4 console statements → logger.warn/error\n- config/database.ts: 5 console statements → logger.info/error\n\nNOTE: Kept console statements in env.ts and migrate.ts as they are standalone scripts\n\nTOTAL: Replaced 64 console statements with structured logging\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run test:unit:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run test:integration:*)",
+      "Bash(npm run build:*)",
+      "Bash(git push origin Saad)",
+      "Bash(git push:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

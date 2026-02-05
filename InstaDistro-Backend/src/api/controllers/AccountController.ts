@@ -5,6 +5,7 @@ import { logger } from '../../config/logger';
 import { cacheService, CacheTTL, CacheNamespace } from '../../services/cache/CacheService';
 import { parseCursorPaginationParams, createCursorPaginatedResponse } from '../../utils/pagination';
 import { PerformanceTracker } from '../../utils/performance';
+import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 
 export class AccountController {
   /**
@@ -30,9 +31,14 @@ export class AccountController {
         });
       }
 
-      // Get user ID from JWT (for now, using a placeholder)
-      // In production, extract from JWT token: req.user.id
-      const userId = req.headers['x-user-id'] as string || 'user_1';
+      // Get user ID from JWT (attached by auth middleware)
+      const userId = (req as AuthenticatedRequest).user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'User ID not found in token',
+        });
+      }
 
       const account = await accountService.createAccount({
         user_id: userId,

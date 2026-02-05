@@ -6,6 +6,7 @@ const GoogleOAuthService_1 = require("../../services/auth/GoogleOAuthService");
 const UserService_1 = require("../../services/auth/UserService");
 const JwtService_1 = require("../../services/auth/JwtService");
 const AccountService_1 = require("../../services/swarm/AccountService");
+const OAuthStateService_1 = require("../../services/auth/OAuthStateService");
 const logger_1 = require("../../config/logger");
 /**
  * OAuth Controller
@@ -24,10 +25,13 @@ class OAuthController {
                     message: 'Instagram OAuth is not configured. Please set INSTAGRAM_CLIENT_ID and INSTAGRAM_CLIENT_SECRET.',
                 });
             }
-            // Generate random state for CSRF protection
-            const state = Math.random().toString(36).substring(7);
-            // Store state in session or temporary storage
-            // For now, we'll pass it as query param and validate later
+            // Generate cryptographically secure state for CSRF protection
+            const state = OAuthStateService_1.oauthStateService.generateState();
+            // Store state in Redis with metadata
+            await OAuthStateService_1.oauthStateService.storeState(state, {
+                provider: 'instagram',
+                timestamp: Date.now()
+            });
             const authUrl = InstagramOAuthService_1.instagramOAuthService.getAuthorizationUrl(state);
             logger_1.logger.info('Redirecting user to Instagram OAuth authorization');
             // Return URL to client (mobile app will open in browser)
@@ -68,8 +72,22 @@ class OAuthController {
                     message: 'Authorization code is required',
                 });
             }
-            // TODO: Validate state parameter for CSRF protection
-            // if (state !== storedState) { ... }
+            // Validate state parameter for CSRF protection
+            if (!state || typeof state !== 'string') {
+                logger_1.logger.warn('Instagram OAuth callback: missing state parameter');
+                return res.status(400).json({
+                    error: 'Security Error',
+                    message: 'State parameter is required for security',
+                });
+            }
+            const stateMetadata = await OAuthStateService_1.oauthStateService.validateState(state);
+            if (!stateMetadata || stateMetadata.provider !== 'instagram') {
+                logger_1.logger.warn('Instagram OAuth callback: invalid or expired state', { state });
+                return res.status(400).json({
+                    error: 'Security Error',
+                    message: 'Invalid or expired state parameter. Please restart the authorization flow.',
+                });
+            }
             logger_1.logger.info('Received Instagram OAuth callback, exchanging code for token');
             // Exchange code for access token
             const result = await InstagramOAuthService_1.instagramOAuthService.exchangeCodeForToken(code);
@@ -216,8 +234,13 @@ class OAuthController {
                     message: 'Google OAuth is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.',
                 });
             }
-            // Generate random state for CSRF protection
-            const state = Math.random().toString(36).substring(7);
+            // Generate cryptographically secure state for CSRF protection
+            const state = OAuthStateService_1.oauthStateService.generateState();
+            // Store state in Redis with metadata
+            await OAuthStateService_1.oauthStateService.storeState(state, {
+                provider: 'google',
+                timestamp: Date.now()
+            });
             const authUrl = GoogleOAuthService_1.googleOAuthService.getAuthorizationUrl(state);
             logger_1.logger.info('Redirecting user to Google OAuth authorization');
             // Return URL to client (mobile app will open in browser)
@@ -255,6 +278,22 @@ class OAuthController {
                 return res.status(400).json({
                     error: 'Validation Error',
                     message: 'Authorization code is required',
+                });
+            }
+            // Validate state parameter for CSRF protection
+            if (!state || typeof state !== 'string') {
+                logger_1.logger.warn('Google OAuth callback: missing state parameter');
+                return res.status(400).json({
+                    error: 'Security Error',
+                    message: 'State parameter is required for security',
+                });
+            }
+            const stateMetadata = await OAuthStateService_1.oauthStateService.validateState(state);
+            if (!stateMetadata || stateMetadata.provider !== 'google') {
+                logger_1.logger.warn('Google OAuth callback: invalid or expired state', { state });
+                return res.status(400).json({
+                    error: 'Security Error',
+                    message: 'Invalid or expired state parameter. Please restart the authorization flow.',
                 });
             }
             logger_1.logger.info('Received Google OAuth callback, exchanging code for tokens');

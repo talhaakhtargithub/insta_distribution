@@ -329,7 +329,10 @@ class PostController {
     async getHistory(req, res) {
         try {
             const userId = req.headers['x-user-id'] || 'user_1';
-            const { accountId, status, limit = 50, offset = 0 } = req.query;
+            const { accountId, status } = req.query;
+            // Validate and sanitize pagination parameters
+            const limit = Math.min(Math.max(1, parseInt(req.query.limit || '50', 10)), 100);
+            const offset = Math.max(0, parseInt(req.query.offset || '0', 10));
             let query = `
         SELECT 
           pr.id,

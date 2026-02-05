@@ -11,11 +11,24 @@ const env_1 = require("./config/env");
 const logger_1 = require("./config/logger");
 const rateLimit_middleware_1 = require("./api/middlewares/rateLimit.middleware");
 const security_middleware_1 = require("./api/middlewares/security.middleware");
+const requestId_middleware_1 = require("./api/middlewares/requestId.middleware");
 const accounts_routes_1 = __importDefault(require("./api/routes/accounts.routes"));
 const posts_routes_1 = __importDefault(require("./api/routes/posts.routes"));
 const oauth_routes_1 = __importDefault(require("./api/routes/oauth.routes"));
 const warmup_routes_1 = __importDefault(require("./api/routes/warmup.routes"));
+const variations_routes_1 = __importDefault(require("./api/routes/variations.routes"));
+const distribution_routes_1 = __importDefault(require("./api/routes/distribution.routes"));
+const groups_routes_1 = __importDefault(require("./api/routes/groups.routes"));
+const health_routes_1 = __importDefault(require("./api/routes/health.routes"));
+const proxy_routes_1 = __importDefault(require("./api/routes/proxy.routes"));
+const schedules_routes_1 = __importDefault(require("./api/routes/schedules.routes"));
 const WarmupJob_1 = require("./jobs/WarmupJob");
+const HealthMonitorJob_1 = require("./jobs/HealthMonitorJob");
+const ProxyJob_1 = require("./jobs/ProxyJob");
+const ScheduleJob_1 = require("./jobs/ScheduleJob");
+const performance_1 = require("./utils/performance");
+const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
+const swagger_1 = require("./config/swagger");
 const app = (0, express_1.default)();
 const PORT = env_1.envConfig.PORT;
 // Trust proxy (for rate limiting behind reverse proxy)
@@ -23,6 +36,10 @@ app.set('trust proxy', 1);
 // Security middleware
 app.use(security_middleware_1.securityHeaders);
 app.use((0, cors_1.default)(security_middleware_1.corsOptions));
+// Request ID middleware (must be early so all logs include request ID)
+app.use(requestId_middleware_1.requestIdMiddleware);
+// Performance monitoring middleware
+app.use(performance_1.performanceMiddleware);
 // Body parsing middleware
 app.use(express_1.default.json({ limit: '50mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '50mb' }));
@@ -30,29 +47,132 @@ app.use(express_1.default.urlencoded({ extended: true, limit: '50mb' }));
 app.use((0, compression_1.default)());
 // Request sanitization
 app.use(security_middleware_1.sanitizeInput);
+// Input validation
+app.use(security_middleware_1.validateInput);
 // Request logging
 app.use(logger_1.requestLogger);
-// Health check endpoint (no rate limiting)
+// Serve static files (security.txt, etc.)
+app.use('/.well-known', express_1.default.static('public/.well-known'));
+// API Documentation (Swagger UI) - Phase 9
+app.use('/api/docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerDocument, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'InstaDistro API Documentation',
+    swaggerOptions: {
+        persistAuthorization: true,
+        displayRequestDuration: true,
+        filter: true,
+    },
+}));
+// Serve OpenAPI spec as JSON
+app.get('/api/docs/openapi.json', (_req, res) => {
+    res.json(swagger_1.swaggerDocument);
+});
+// Health check endpoint (no rate limiting) - Enhanced in Phase 9
 app.get('/health', async (_req, res) => {
     try {
         // Test database connection
         const dbResult = await database_1.pool.query('SELECT NOW()');
         const dbConnected = dbResult.rows.length > 0;
+        // Memory usage
+        const memoryUsage = process.memoryUsage();
+        const formatBytes = (bytes) => Math.round(bytes / 1024 / 1024 * 100) / 100;
         res.json({
             status: 'ok',
             timestamp: new Date().toISOString(),
-            database: dbConnected ? 'connected' : 'disconnected',
-            uptime: process.uptime(),
-            environment: env_1.envConfig.NODE_ENV,
             version: '1.0.0',
+            environment: env_1.envConfig.NODE_ENV,
+            uptime: {
+                seconds: Math.floor(process.uptime()),
+                formatted: formatUptime(process.uptime()),
+            },
+            services: {
+                database: dbConnected ? 'connected' : 'disconnected',
+                api: 'running',
+            },
+            memory: {
+                heapUsed: `${formatBytes(memoryUsage.heapUsed)} MB`,
+                heapTotal: `${formatBytes(memoryUsage.heapTotal)} MB`,
+                rss: `${formatBytes(memoryUsage.rss)} MB`,
+                external: `${formatBytes(memoryUsage.external)} MB`,
+            },
+            documentation: '/api/docs',
         });
     }
     catch (error) {
         logger_1.logger.error('Health check failed', { error });
         res.status(500).json({
             status: 'error',
-            database: 'disconnected',
+            timestamp: new Date().toISOString(),
+            services: {
+                database: 'disconnected',
+                api: 'running',
+            },
             error: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+// Helper function to format uptime
+function formatUptime(seconds) {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    const parts = [];
+    if (days > 0)
+        parts.push(`${days}d`);
+    if (hours > 0)
+        parts.push(`${hours}h`);
+    if (minutes > 0)
+        parts.push(`${minutes}m`);
+    parts.push(`${secs}s`);
+    return parts.join(' ');
+}
+// API Metrics endpoint - Phase 9
+app.get('/api/metrics', async (_req, res) => {
+    try {
+        // Get database stats
+        const dbStats = await database_1.pool.query(`
+      SELECT
+        (SELECT count(*) FROM accounts) as total_accounts,
+        (SELECT count(*) FROM accounts WHERE account_state = 'ACTIVE') as active_accounts,
+        (SELECT count(*) FROM accounts WHERE account_state = 'WARMING_UP') as warming_up_accounts,
+        (SELECT count(*) FROM warmup_tasks WHERE status = 'pending') as pending_warmup_tasks,
+        (SELECT count(*) FROM post_results WHERE created_at > NOW() - INTERVAL '24 hours') as posts_last_24h
+    `);
+        const stats = dbStats.rows[0] || {};
+        const memoryUsage = process.memoryUsage();
+        res.json({
+            timestamp: new Date().toISOString(),
+            system: {
+                uptime: process.uptime(),
+                nodeVersion: process.version,
+                platform: process.platform,
+                memoryUsage: {
+                    heapUsedMB: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+                    heapTotalMB: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+                    rssMB: Math.round(memoryUsage.rss / 1024 / 1024),
+                },
+            },
+            accounts: {
+                total: parseInt(stats.total_accounts) || 0,
+                active: parseInt(stats.active_accounts) || 0,
+                warmingUp: parseInt(stats.warming_up_accounts) || 0,
+            },
+            activity: {
+                pendingWarmupTasks: parseInt(stats.pending_warmup_tasks) || 0,
+                postsLast24h: parseInt(stats.posts_last_24h) || 0,
+            },
+            performance: {
+                targetResponseTime: 'P95 < 200ms',
+                cacheHitRateTarget: '> 80%',
+            },
+        });
+    }
+    catch (error) {
+        logger_1.logger.error('Metrics endpoint error', { error });
+        res.status(500).json({
+            error: 'Failed to fetch metrics',
+            message: error instanceof Error ? error.message : 'Unknown error',
         });
     }
 });
@@ -110,10 +230,20 @@ app.use('/api/posts', posts_routes_1.default);
 app.use('/api/auth', oauth_routes_1.default);
 // Warmup routes
 app.use('/api/warmup', warmup_routes_1.default);
+// Variation routes
+app.use('/api/variations', variations_routes_1.default);
+// Distribution routes
+app.use('/api/distribution', distribution_routes_1.default);
+// Groups routes
+app.use('/api/groups', groups_routes_1.default);
+// Health monitoring routes
+app.use('/api/health', health_routes_1.default);
+// Proxy management routes
+app.use('/api/proxies', proxy_routes_1.default);
+// Schedule management routes
+app.use('/api/schedules', schedules_routes_1.default);
 // Future routes (commented for now)
-// app.use('/api/schedules', schedulesRouter);
 // app.use('/api/swarm', swarmRouter);
-// app.use('/api/proxies', proxiesRouter);
 // 404 handler
 app.use((_req, res) => {
     res.status(404).json({
@@ -156,6 +286,15 @@ const server = app.listen(PORT, () => {
     logger_1.logger.info('🔄 Starting background job schedulers...');
     (0, WarmupJob_1.startWarmupScheduler)();
     logger_1.logger.info('✓ Warmup scheduler started (checks every 5 minutes)');
+    // Start health monitoring scheduler
+    (0, HealthMonitorJob_1.scheduleAutoMonitoring)();
+    logger_1.logger.info('✓ Health monitoring scheduler started (checks every 6 hours)');
+    // Start proxy health checks and rotation
+    (0, ProxyJob_1.scheduleProxyHealthChecks)();
+    logger_1.logger.info('✓ Proxy health checks scheduled (checks every 15 minutes)');
+    // Start schedule processor
+    (0, ScheduleJob_1.startScheduleProcessor)();
+    logger_1.logger.info('✓ Schedule processor started (checks every 5 minutes)');
 });
 // Graceful shutdown
 const gracefulShutdown = async (signal) => {

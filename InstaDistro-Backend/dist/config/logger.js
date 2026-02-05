@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.logError = exports.requestLogger = exports.logger = void 0;
+exports.sanitizeSensitiveData = exports.logError = exports.requestLogger = exports.logger = void 0;
 const winston_1 = __importDefault(require("winston"));
 const env_1 = require("./env");
 /**
@@ -91,4 +91,57 @@ const logError = (error, context) => {
     });
 };
 exports.logError = logError;
+/**
+ * Sanitize sensitive data from objects before logging
+ * Redacts passwords, tokens, secrets, keys, and other sensitive fields
+ */
+const sanitizeSensitiveData = (obj) => {
+    if (!obj || typeof obj !== 'object') {
+        return obj;
+    }
+    // Sensitive field names to redact (case-insensitive)
+    const sensitiveFields = [
+        'password',
+        'passwd',
+        'pwd',
+        'token',
+        'accesstoken',
+        'refreshtoken',
+        'access_token',
+        'refresh_token',
+        'secret',
+        'apikey',
+        'api_key',
+        'key',
+        'authorization',
+        'auth',
+        'credential',
+        'credentials',
+        'cookie',
+        'session',
+        'csrf',
+        'xsrf',
+        'private',
+        'privatekey',
+        'private_key',
+        'encryptionkey',
+        'encryption_key',
+    ];
+    const sanitized = Array.isArray(obj) ? [...obj] : { ...obj };
+    for (const key in sanitized) {
+        const lowerKey = key.toLowerCase();
+        // Check if field name matches sensitive patterns
+        const isSensitive = sensitiveFields.some(field => lowerKey.includes(field));
+        if (isSensitive) {
+            // Redact the value
+            sanitized[key] = '[REDACTED]';
+        }
+        else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
+            // Recursively sanitize nested objects
+            sanitized[key] = (0, exports.sanitizeSensitiveData)(sanitized[key]);
+        }
+    }
+    return sanitized;
+};
+exports.sanitizeSensitiveData = sanitizeSensitiveData;
 exports.default = exports.logger;

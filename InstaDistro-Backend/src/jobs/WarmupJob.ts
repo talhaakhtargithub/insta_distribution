@@ -2,7 +2,7 @@ import Queue from 'bull';
 import { redisConfig } from '../config/redis';
 import { logger } from '../config/logger';
 import { warmupAutomationService } from '../services/swarm/WarmupAutomation';
-import { WarmupTask, TaskType } from '../models/WarmupTask';
+import { TaskType } from '../models/WarmupTask';
 import { pool } from '../config/database';
 import { IgApiClient } from 'instagram-private-api';
 
@@ -335,6 +335,10 @@ async function executeWatchStoryAction(ig: IgApiClient, targetCount: number): Pr
 
 /**
  * Execute post story action
+ *
+ * NOTE: Story posting requires actual image/video content.
+ * For production use, integrate with your content library or template system.
+ * This implementation creates a simple solid-color PNG as a placeholder.
  */
 async function executePostStoryAction(
   ig: IgApiClient,
@@ -344,24 +348,35 @@ async function executePostStoryAction(
   let completed = 0;
 
   try {
-    // For warmup, we'll post simple text stories
-    // In production, you'd want to use actual images/videos
-
     for (let i = 0; i < targetCount; i++) {
       try {
-        // Note: Posting stories requires actual image/video content
-        // This is a placeholder - you'll need to implement actual story posting
-        // with images or videos from your content library
+        // Create a minimal 1x1 pixel PNG (transparent)
+        // In production, replace with actual story content from your media library
+        const minimalPng = Buffer.from([
+          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, // PNG signature
+          0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+          0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1 dimensions
+          0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+          0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41,
+          0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+          0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
+          0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+          0x42, 0x60, 0x82,
+        ]);
 
-        logger.info(`Story posting for warmup requires content - skipping for now`);
-        // TODO: Implement story posting with actual content
+        // Post the story
+        await ig.publish.story({
+          file: minimalPng,
+        });
+
+        logger.info(`Posted warmup story ${i + 1}/${targetCount} for account ${account.username}`);
         completed++;
 
         // Random delay between stories (5 min - 15 min)
         await randomDelay(300, 900);
-      } catch (error) {
-        logger.warn(`Failed to post story:`, error);
-        // Continue
+      } catch (error: any) {
+        logger.warn(`Failed to post story for ${account.username}:`, error.message);
+        // Continue with next story
       }
     }
   } catch (error: any) {
@@ -373,6 +388,10 @@ async function executePostStoryAction(
 
 /**
  * Execute post feed action
+ *
+ * NOTE: Feed posting requires actual image/video content.
+ * For production use, integrate with your content library or media templates.
+ * This implementation creates a simple solid-color image as a placeholder.
  */
 async function executePostFeedAction(
   ig: IgApiClient,
@@ -382,20 +401,52 @@ async function executePostFeedAction(
   let completed = 0;
 
   try {
-    // For warmup, feed posts need actual video/image content
-    // This is a placeholder - you'll need to integrate with your content library
+    // Warmup captions for feed posts
+    const warmupCaptions = [
+      'Starting fresh 🌱',
+      'New journey begins ✨',
+      'Building something great 💪',
+      'One step at a time 🎯',
+      'Growing every day 🌟',
+      'Progress over perfection 📈',
+      'Making moves 🚀',
+      'Stay focused 💫',
+    ];
 
     for (let i = 0; i < targetCount; i++) {
       try {
-        logger.info(`Feed posting for warmup requires content - skipping for now`);
-        // TODO: Implement feed posting with actual content from library
+        // Create a minimal 1x1 pixel PNG (solid color)
+        // In production, replace with actual feed content from your media library
+        const minimalPng = Buffer.from([
+          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, // PNG signature
+          0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+          0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1 dimensions
+          0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+          0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41,
+          0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+          0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
+          0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+          0x42, 0x60, 0x82,
+        ]);
+
+        const caption = warmupCaptions[i % warmupCaptions.length];
+
+        // Post to feed
+        const result = await ig.publish.photo({
+          file: minimalPng,
+          caption,
+        });
+
+        logger.info(
+          `Posted warmup feed post ${i + 1}/${targetCount} for account ${account.username}, media ID: ${result.media.id}`
+        );
         completed++;
 
         // Long delay between feed posts (1 hour - 3 hours)
         await randomDelay(3600, 10800);
-      } catch (error) {
-        logger.warn(`Failed to post to feed:`, error);
-        // Continue
+      } catch (error: any) {
+        logger.warn(`Failed to post to feed for ${account.username}:`, error.message);
+        // Continue with next post
       }
     }
   } catch (error: any) {

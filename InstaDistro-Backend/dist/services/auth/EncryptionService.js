@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.encryptionService = void 0;
 const crypto_1 = __importDefault(require("crypto"));
+const logger_1 = require("../../config/logger");
 /**
  * Encryption Service for securely storing sensitive data like passwords
  * Uses AES-256-CBC encryption
@@ -24,8 +25,8 @@ class EncryptionService {
      */
     generateKey() {
         const key = crypto_1.default.randomBytes(32).toString('hex');
-        console.warn('⚠️  WARNING: Using generated encryption key. Set ENCRYPTION_KEY in .env for production!');
-        console.warn(`Generated key: ${key}`);
+        logger_1.logger.warn('⚠️  WARNING: Using generated encryption key. Set ENCRYPTION_KEY in .env for production!');
+        logger_1.logger.warn(`Generated key: ${key}`);
         return key;
     }
     /**
@@ -45,7 +46,7 @@ class EncryptionService {
             return `${iv.toString('hex')}:${encrypted}`;
         }
         catch (error) {
-            console.error('Encryption error:', error);
+            logger_1.logger.error('Encryption error:', error);
             throw new Error('Failed to encrypt data');
         }
     }
@@ -70,7 +71,7 @@ class EncryptionService {
             return decrypted;
         }
         catch (error) {
-            console.error('Decryption error:', error);
+            logger_1.logger.error('Decryption error:', error);
             throw new Error('Failed to decrypt data');
         }
     }

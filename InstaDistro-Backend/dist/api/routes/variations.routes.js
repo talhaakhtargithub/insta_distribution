@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const VariationController_1 = require("../controllers/VariationController");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authMiddleware);
+router.post('/create', VariationController_1.variationController.createVariation.bind(VariationController_1.variationController));
+router.post('/batch', VariationController_1.variationController.createBatch.bind(VariationController_1.variationController));
+router.get('/settings', VariationController_1.variationController.getSettings.bind(VariationController_1.variationController));
+router.get('/:accountId', VariationController_1.variationController.getVariations.bind(VariationController_1.variationController));
+exports.default = router;

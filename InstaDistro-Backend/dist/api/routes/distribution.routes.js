@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const DistributionController_1 = require("../controllers/DistributionController");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authMiddleware);
+router.post('/start', DistributionController_1.distributionController.startDistribution.bind(DistributionController_1.distributionController));
+router.get('/:id/status', DistributionController_1.distributionController.getDistributionStatus.bind(DistributionController_1.distributionController));
+router.post('/:id/cancel', DistributionController_1.distributionController.cancelDistribution.bind(DistributionController_1.distributionController));
+exports.default = router;

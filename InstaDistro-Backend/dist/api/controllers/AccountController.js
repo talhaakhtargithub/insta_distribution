@@ -3,6 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.accountController = exports.AccountController = void 0;
 const AccountService_1 = require("../../services/swarm/AccountService");
 const AuthService_1 = require("../../services/instagram/AuthService");
+const logger_1 = require("../../config/logger");
+const CacheService_1 = require("../../services/cache/CacheService");
+const pagination_1 = require("../../utils/pagination");
+const performance_1 = require("../../utils/performance");
 class AccountController {
     /**
      * POST /api/accounts
@@ -24,9 +28,14 @@ class AccountController {
                     message: 'accountType must be either "personal" or "business"',
                 });
             }
-            // Get user ID from JWT (for now, using a placeholder)
-            // In production, extract from JWT token: req.user.id
-            const userId = req.headers['x-user-id'] || 'user_1';
+            // Get user ID from JWT (attached by auth middleware)
+            const userId = req.user?.userId;
+            if (!userId) {
+                return res.status(401).json({
+                    error: 'Unauthorized',
+                    message: 'User ID not found in token',
+                });
+            }
             const account = await AccountService_1.accountService.createAccount({
                 user_id: userId,
                 username,
@@ -34,6 +43,8 @@ class AccountController {
                 account_type: accountType,
                 proxy_id: proxyId,
             });
+            // Invalidate user's account caches
+            await CacheService_1.cacheService.invalidateUser(userId);
             // Remove encrypted password from response
             const { encrypted_password, ...accountData } = account;
             res.status(201).json({
@@ -42,7 +53,7 @@ class AccountController {
             });
         }
         catch (error) {
-            console.error('Create account error:', error);
+            logger_1.logger.error('Create account error', { error: error.message, stack: error.stack });
             res.status(500).json({
                 error: 'Server Error',
                 message: error.message || 'Failed to create account',
@@ -52,13 +63,29 @@ class AccountController {
     /**
      * GET /api/accounts
      * Get all accounts for the authenticated user
+     * Supports cursor-based pagination and caching
      */
     async getAccounts(req, res) {
+        const tracker = new performance_1.PerformanceTracker();
         try {
             // Get user ID from JWT (placeholder)
             const userId = req.headers['x-user-id'] || 'user_1';
             // Optional filter by state
             const state = req.query.state;
+            // Parse pagination params
+            const { cursor, limit } = (0, pagination_1.parseCursorPaginationParams)(req.query);
+            tracker.checkpoint('params-parsed');
+            // Build cache key
+            const cacheKey = CacheService_1.cacheService.key(state ? CacheService_1.CacheNamespace.ACCOUNTS_LIST : CacheService_1.CacheNamespace.ACCOUNTS_LIST, userId, state || 'all', cursor || 'initial', limit.toString());
+            // Try to get from cache
+            const cached = await CacheService_1.cacheService.get(cacheKey);
+            if (cached) {
+                tracker.checkpoint('cache-hit');
+                tracker.logSummary('GET /api/accounts [cached]');
+                return res.json(cached);
+            }
+            tracker.checkpoint('cache-miss');
+            // Fetch from database
             let accounts;
             if (state) {
                 accounts = await AccountService_1.accountService.getAccountsByState(userId, state);
@@ -66,15 +93,20 @@ class AccountController {
             else {
                 accounts = await AccountService_1.accountService.getAccountsByUserId(userId);
             }
+            tracker.checkpoint('accounts-fetched');
             // Remove encrypted passwords from response
             const accountsData = accounts.map(({ encrypted_password, ...account }) => account);
-            res.json({
-                count: accountsData.length,
-                accounts: accountsData,
-            });
+            // Create paginated response
+            const response = (0, pagination_1.createCursorPaginatedResponse)(accountsData, limit);
+            tracker.checkpoint('response-created');
+            // Cache the response
+            await CacheService_1.cacheService.set(cacheKey, response, CacheService_1.CacheTTL.MEDIUM);
+            tracker.checkpoint('response-cached');
+            tracker.logSummary('GET /api/accounts');
+            res.json(response);
         }
         catch (error) {
-            console.error('Get accounts error:', error);
+            logger_1.logger.error('Get accounts error', { error: error.message, stack: error.stack });
             res.status(500).json({
                 error: 'Server Error',
                 message: error.message || 'Failed to fetch accounts',
@@ -100,7 +132,7 @@ class AccountController {
             res.json({ account: accountData });
         }
         catch (error) {
-            console.error('Get account error:', error);
+            logger_1.logger.error('Get account error', { error: error.message, stack: error.stack });
             res.status(500).json({
                 error: 'Server Error',
                 message: error.message || 'Failed to fetch account',
@@ -116,6 +148,8 @@ class AccountController {
             const { id } = req.params;
             const updates = req.body;
             const account = await AccountService_1.accountService.updateAccount(id, updates);
+            // Invalidate account-specific caches
+            await CacheService_1.cacheService.invalidateAccount(id);
             // Remove encrypted password from response
             const { encrypted_password, ...accountData } = account;
             res.json({
@@ -124,7 +158,7 @@ class AccountController {
             });
         }
         catch (error) {
-            console.error('Update account error:', error);
+            logger_1.logger.error('Update account error', { error: error.message, stack: error.stack });
             res.status(500).json({
                 error: 'Server Error',
                 message: error.message || 'Failed to update account',
@@ -139,12 +173,14 @@ class AccountController {
         try {
             const { id } = req.params;
             await AccountService_1.accountService.deleteAccount(id);
+            // Invalidate account-specific caches
+            await CacheService_1.cacheService.invalidateAccount(id);
             res.json({
                 message: 'Account deleted successfully',
             });
         }
         catch (error) {
-            console.error('Delete account error:', error);
+            logger_1.logger.error('Delete account error', { error: error.message, stack: error.stack });
             res.status(500).json({
                 error: 'Server Error',
                 message: error.message || 'Failed to delete account',
@@ -167,6 +203,10 @@ class AccountController {
             // Get user ID from JWT (placeholder)
             const userId = req.headers['x-user-id'] || 'user_1';
             const result = await AccountService_1.accountService.bulkImport(userId, accounts);
+            // Invalidate user's account caches after bulk import
+            if (result.success.length > 0) {
+                await CacheService_1.cacheService.invalidateUser(userId);
+            }
             res.json({
                 message: 'Bulk import completed',
                 imported: result.success.length,
@@ -176,7 +216,7 @@ class AccountController {
             });
         }
         catch (error) {
-            console.error('Bulk import error:', error);
+            logger_1.logger.error('Bulk import error', { error: error.message, stack: error.stack });
             res.status(500).json({
                 error: 'Server Error',
                 message: error.message || 'Failed to import accounts',
@@ -186,19 +226,26 @@ class AccountController {
     /**
      * GET /api/accounts/stats/swarm
      * Get swarm dashboard statistics
+     * Cached for performance
      */
     async getSwarmStats(req, res) {
+        const tracker = new performance_1.PerformanceTracker();
         try {
             // Get user ID from JWT (placeholder)
             const userId = req.headers['x-user-id'] || 'user_1';
-            const stats = await AccountService_1.accountService.getSwarmStats(userId);
-            res.json({
+            // Use cache-aside pattern with getOrSet
+            const stats = await CacheService_1.cacheService.getOrSet(CacheService_1.cacheService.key(CacheService_1.CacheNamespace.HEALTH_SWARM, userId), async () => await AccountService_1.accountService.getSwarmStats(userId), CacheService_1.CacheTTL.SHORT // 5 minutes - stats can be slightly stale
+            );
+            tracker.checkpoint('stats-fetched');
+            const response = {
                 stats,
                 timestamp: new Date().toISOString(),
-            });
+            };
+            tracker.logSummary('GET /api/accounts/stats/swarm');
+            res.json(response);
         }
         catch (error) {
-            console.error('Get swarm stats error:', error);
+            logger_1.logger.error('Get swarm stats error', { error: error.message, stack: error.stack });
             res.status(500).json({
                 error: 'Server Error',
                 message: error.message || 'Failed to fetch statistics',
@@ -212,7 +259,7 @@ class AccountController {
     async verifyAccount(req, res) {
         try {
             const { id } = req.params;
-            console.log(`Verifying account ${id}`);
+            logger_1.logger.info('Verifying account', { accountId: id });
             const result = await AuthService_1.authService.authenticate(id);
             if (!result.success) {
                 return res.status(400).json({
@@ -230,7 +277,7 @@ class AccountController {
             });
         }
         catch (error) {
-            console.error('Verify account error:', error);
+            logger_1.logger.error('Verify account error', { error: error.message, stack: error.stack });
             res.status(500).json({
                 error: 'Server Error',
                 message: error.message || 'Verification failed',
@@ -244,7 +291,7 @@ class AccountController {
     async refreshSession(req, res) {
         try {
             const { id } = req.params;
-            console.log(`Refreshing session for account ${id}`);
+            logger_1.logger.info('Refreshing session for account', { accountId: id });
             const result = await AuthService_1.authService.refreshSession(id);
             if (!result.success) {
                 return res.status(400).json({
@@ -259,7 +306,7 @@ class AccountController {
             });
         }
         catch (error) {
-            console.error('Refresh session error:', error);
+            logger_1.logger.error('Refresh session error', { error: error.message, stack: error.stack });
             res.status(500).json({
                 error: 'Server Error',
                 message: error.message || 'Session refresh failed',
@@ -273,7 +320,7 @@ class AccountController {
     async healthCheck(req, res) {
         try {
             const userId = req.headers['x-user-id'] || 'user_1';
-            console.log(`Running health check for user ${userId}`);
+            logger_1.logger.info('Running health check for user', { userId });
             const result = await AuthService_1.authService.checkAccountsHealth(userId);
             res.json({
                 success: true,
@@ -284,7 +331,7 @@ class AccountController {
             });
         }
         catch (error) {
-            console.error('Health check error:', error);
+            logger_1.logger.error('Health check error', { error: error.message, stack: error.stack });
             res.status(500).json({
                 error: 'Server Error',
                 message: error.message || 'Health check failed',
@@ -305,7 +352,7 @@ class AccountController {
                     message: '2FA code is required',
                 });
             }
-            console.log(`Submitting 2FA code for account ${id}`);
+            logger_1.logger.info('Submitting 2FA code for account', { accountId: id });
             const result = await AuthService_1.authService.handle2FAChallenge(id, code);
             if (!result.success) {
                 return res.status(400).json({
@@ -320,7 +367,7 @@ class AccountController {
             });
         }
         catch (error) {
-            console.error('2FA challenge error:', error);
+            logger_1.logger.error('2FA challenge error', { error: error.message, stack: error.stack });
             res.status(500).json({
                 error: 'Server Error',
                 message: error.message || '2FA verification failed',

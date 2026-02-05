@@ -20,6 +20,7 @@ const AccountService_1 = require("../services/swarm/AccountService");
 const database_1 = require("../config/database");
 const logger_1 = require("../config/logger");
 const env_1 = require("../config/env");
+const jobQueue_1 = require("../utils/jobQueue");
 // ============================================
 // Queue Setup
 // ============================================
@@ -28,16 +29,8 @@ const postQueue = new bull_1.default('instagram-posts', {
         host: env_1.envConfig.REDIS_HOST || 'localhost',
         port: env_1.envConfig.REDIS_PORT || 6379,
     },
-    defaultJobOptions: {
-        attempts: 3,
-        backoff: {
-            type: 'exponential',
-            delay: 30000, // 30 seconds initial delay
-        },
-        removeOnComplete: 100,
-        removeOnFail: 500,
-        timeout: 5 * 60 * 1000, // 5 minute timeout
-    },
+    // Use job-specific options from jobQueue utils instead of defaults
+    defaultJobOptions: (0, jobQueue_1.getJobOptionsByType)(jobQueue_1.JobType.POST_PUBLISH),
 });
 exports.postQueue = postQueue;
 // ============================================
@@ -45,23 +38,16 @@ exports.postQueue = postQueue;
 // ============================================
 postQueue.process(async (job) => {
     const { userId, accountId, mediaPath, mediaType, caption, hashtags, coverImagePath, distributionId } = job.data;
+    // Record job started
+    jobQueue_1.jobMonitor.recordJobStarted(jobQueue_1.JobType.POST_PUBLISH);
     logger_1.logger.info(`Processing post job ${job.id} for account ${accountId}`, {
         mediaType,
         distributionId,
         attempt: job.attemptsMade + 1,
     });
     try {
-        // Check if scheduled for future
-        if (job.data.scheduledFor) {
-            const scheduledTime = new Date(job.data.scheduledFor);
-            const now = new Date();
-            if (scheduledTime > now) {
-                const delayMs = scheduledTime.getTime() - now.getTime();
-                logger_1.logger.info(`Post job ${job.id} delayed for ${delayMs}ms`);
-                await job.moveToDelayed(Date.now() + delayMs);
-                return { delayed: true, scheduledFor: job.data.scheduledFor };
-            }
-        }
+        // Note: Scheduling is handled at queue time via delay option
+        // If the job is processing, it means the scheduled time has passed
         // Verify account is still valid
         const account = await AccountService_1.accountService.getAccountById(accountId);
         if (!account) {
@@ -90,17 +76,24 @@ postQueue.process(async (job) => {
             accountId,
         };
         await recordPostResult(userId, accountId, postResult, job.data);
-        // Update account last post time
+        // Update account status on successful post
         if (result.success) {
-            await AccountService_1.accountService.updateAccount(accountId, {
-                last_engagement_at: new Date().toISOString(),
-            });
+            // Success is recorded in post_results table
+            // Account timestamp is managed by database triggers
+            logger_1.logger.debug(`Post successful for account ${accountId}`);
         }
         logger_1.logger.info(`Post job ${job.id} completed`, {
             success: result.success,
             mediaId: result.mediaId,
             accountId,
         });
+        // Record job completed
+        if (result.success) {
+            jobQueue_1.jobMonitor.recordJobComplete(jobQueue_1.JobType.POST_PUBLISH);
+        }
+        else {
+            jobQueue_1.jobMonitor.recordJobFailed(jobQueue_1.JobType.POST_PUBLISH);
+        }
         return postResult;
     }
     catch (error) {
@@ -120,6 +113,8 @@ postQueue.process(async (job) => {
             accountId,
         };
         await recordPostResult(userId, accountId, failResult, job.data);
+        // Record job failed
+        jobQueue_1.jobMonitor.recordJobFailed(jobQueue_1.JobType.POST_PUBLISH);
         // Determine if we should retry
         if (!isRetryableError(error)) {
             // Non-retryable error - mark as failed
