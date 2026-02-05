@@ -6,6 +6,7 @@ import { envConfig } from './config/env';
 import { logger, requestLogger } from './config/logger';
 import { apiLimiter, createAccountLimiter, bulkImportLimiter } from './api/middlewares/rateLimit.middleware';
 import { securityHeaders, corsOptions, sanitizeInput } from './api/middlewares/security.middleware';
+import { requestIdMiddleware } from './api/middlewares/requestId.middleware';
 import accountsRouter from './api/routes/accounts.routes';
 import postsRouter from './api/routes/posts.routes';
 import oauthRouter from './api/routes/oauth.routes';
@@ -30,6 +31,9 @@ app.set('trust proxy', 1);
 // Security middleware
 app.use(securityHeaders);
 app.use(cors(corsOptions));
+
+// Request ID middleware (must be early so all logs include request ID)
+app.use(requestIdMiddleware);
 
 // Body parsing middleware
 app.use(express.json({ limit: '50mb' }));
