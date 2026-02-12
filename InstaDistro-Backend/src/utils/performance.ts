@@ -84,8 +84,10 @@ export function performanceMiddleware(req: Request, res: Response, next: NextFun
       });
     }
 
-    // Add performance header
-    res.setHeader('X-Response-Time', `${duration}ms`);
+    // Add performance header (only if headers not already sent)
+    if (!res.headersSent) {
+      res.setHeader('X-Response-Time', `${duration}ms`);
+    }
 
     // Call original end
     return originalEnd.apply(this, args as any);
